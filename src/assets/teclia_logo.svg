@@ -1,0 +1,53 @@
+<svg width="100%" viewBox="0 0 680 420" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>Teclia Logo</title>
+  <desc>Logo minimalista de Teclia con teclas de piano en oro y negro</desc>
+
+  <defs>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#E8C96A;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#B8922A;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="goldGradLight" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#F0D680;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#C9A84C;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="keyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a1a;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#0a0a0a;stop-opacity:1"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="60" y="30" width="560" height="360" rx="20" fill="#0A0A0A"/>
+  <rect x="60" y="30" width="560" height="360" rx="20" fill="none" stroke="#C9A84C" stroke-width="0.8" stroke-opacity="0.5"/>
+
+  <g>
+    <rect x="214" y="110" width="32" height="90" rx="3" fill="#F5F0E8"/>
+    <rect x="249" y="110" width="32" height="90" rx="3" fill="#F5F0E8"/>
+    <rect x="284" y="110" width="32" height="90" rx="3" fill="#F5F0E8"/>
+    <rect x="319" y="110" width="32" height="90" rx="3" fill="#F5F0E8"/>
+    <rect x="354" y="110" width="32" height="90" rx="3" fill="#F5F0E8"/>
+    <rect x="389" y="110" width="32" height="90" rx="3" fill="#F5F0E8"/>
+    <rect x="424" y="110" width="32" height="90" rx="3" fill="#F5F0E8"/>
+    <rect x="245" y="110" width="4" height="90" fill="#0A0A0A"/>
+    <rect x="280" y="110" width="4" height="90" fill="#0A0A0A"/>
+    <rect x="315" y="110" width="4" height="90" fill="#0A0A0A"/>
+    <rect x="350" y="110" width="4" height="90" fill="#0A0A0A"/>
+    <rect x="385" y="110" width="4" height="90" fill="#0A0A0A"/>
+    <rect x="420" y="110" width="4" height="90" fill="#0A0A0A"/>
+    <rect x="234" y="110" width="22" height="56" rx="3" fill="url(#keyGrad)"/>
+    <rect x="269" y="110" width="22" height="56" rx="3" fill="url(#keyGrad)"/>
+    <rect x="339" y="110" width="22" height="56" rx="3" fill="url(#keyGrad)"/>
+    <rect x="374" y="110" width="22" height="56" rx="3" fill="url(#keyGrad)"/>
+    <rect x="409" y="110" width="22" height="56" rx="3" fill="url(#keyGrad)"/>
+    <rect x="214" y="108" width="242" height="3" rx="1.5" fill="url(#goldGrad)"/>
+  </g>
+
+  <circle cx="186" cy="130" r="5" fill="#C9A84C" opacity="0.7"/>
+  <circle cx="174" cy="118" r="3" fill="#C9A84C" opacity="0.4"/>
+  <circle cx="480" cy="148" r="4" fill="#C9A84C" opacity="0.5"/>
+  <circle cx="493" cy="133" r="2.5" fill="#C9A84C" opacity="0.3"/>
+
+  <text x="340" y="262" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="52" font-weight="700" letter-spacing="14" fill="url(#goldGradLight)">TECLIA</text>
+  <text x="340" y="292" text-anchor="middle" font-family="'Helvetica Neue', Arial, sans-serif" font-size="12" font-weight="300" letter-spacing="5" fill="#C9A84C" opacity="0.65">PIANO · MUSIC · MASTERY</text>
+  <line x1="270" y1="305" x2="410" y2="305" stroke="#C9A84C" stroke-width="0.6" stroke-opacity="0.4"/>
+</svg>
