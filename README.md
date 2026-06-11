@@ -115,8 +115,7 @@ To run the script in Supabase:
 
 If you do not have `psql`, install the PostgreSQL client or use your preferred Postgres tool.
 
-### Seed data included
-
+### Seed data includedd:
 The SQL scripts create these tables:
 
 - `users`
