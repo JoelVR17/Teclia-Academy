@@ -106,7 +106,7 @@ psql "$DATABASE_URL" -f postgres_setup.sql
 
 ### Supabase setup
 
-To run the script in Supabase:
+To run the script in Supabase:a
 
 1. Create a new Supabase project.
 2. Open the SQL editor in Supabase.

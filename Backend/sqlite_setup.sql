@@ -1,4 +1,4 @@
--- SQLite database schema and seed data for Teclia Academia
+x-- SQLite database schema and seed data for Teclia Academia
 
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
