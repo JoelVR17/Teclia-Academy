@@ -4,6 +4,7 @@ dist/
 .env
 .env.local
 
+.vscode/
 # Backend local/runtime files
 Backend/node_modules/
 Backend/.env
