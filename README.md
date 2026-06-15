@@ -1,5 +1,7 @@
 # Teclia Academia
 
+JOEL GUAPO
+
 This repository contains a React frontend and an Express backend for the Teclia Academia project.
 
 ## Local Setup
@@ -63,7 +65,7 @@ The frontend currently points to a deployed backend URL in `src/services/api.js`
 To use your local backend instead, update `BACKEND_BASE_URL` in `src/services/api.js`:
 
 ```js
-export const BACKEND_BASE_URL = 'http://localhost:3001';
+export const BACKEND_BASE_URL = "http://localhost:3001";
 ```
 
 Then restart the frontend.
@@ -116,6 +118,7 @@ To run the script in Supabase:
 If you do not have `psql`, install the PostgreSQL client or use your preferred Postgres tool.
 
 ### Seed data includedd:
+
 The SQL scripts create these tables:
 
 - `users`
