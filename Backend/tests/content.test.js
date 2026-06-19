@@ -1,6 +1,6 @@
 import request from 'supertest';
 import app from '../app.js';
-import { setupTestDb } from './helpers/db.setup.js';
+import { setupTestDb, promoteUserToAdmin } from './helpers/db.setup.js';
 import { normalUser, adminUser } from './fixtures/users.js';
 import { validContent } from './fixtures/content.js';
 
@@ -18,8 +18,7 @@ describe('Content endpoints', () => {
     await request(app).post('/api/auth/signup').send({ name: adminUser.name, email: adminUser.email, password: adminUser.password });
 
     // escalate to admin by updating DB before login so token reflects admin role
-    const db = (await import('../db/init.js')).getDb();
-    await db.run("UPDATE users SET role = 'admin' WHERE LOWER(email) = ?", [adminUser.email]);
+    await promoteUserToAdmin(adminUser.email);
 
     const loginRes = await request(app).post('/api/auth/login').send({ email: adminUser.email, password: adminUser.password });
     adminToken = loginRes.body.token;
