@@ -42,6 +42,12 @@ const generateToken = (userId, role) => {
   });
 };
 
+const generateRefreshToken = (userId, role) => {
+  return jwt.sign({ id: userId, role }, process.env.JWT_SECRET, {
+    expiresIn: '7d'
+  });
+};
+
 const createMailTransport = () => {
   return nodemailer.createTransport({
     host: 'smtp.sendgrid.net',
@@ -108,9 +114,11 @@ export const signup = async (req, res) => {
     const userId = insertResult[0].values[0][0];
 
     const token = generateToken(userId, 'student');
+    const refreshToken = generateRefreshToken(userId, 'student');
     res.json({
       message: 'User created successfully',
       token,
+      refreshToken,
       user: { id: userId, email: normalizedEmail, name, role: 'student', avatar_url: null }
     });
   } catch (err) {
@@ -160,9 +168,11 @@ export const login = async (req, res) => {
     }
 
     const token = generateToken(user.id, user.role);
+    const refreshToken = generateRefreshToken(user.id, user.role);
     res.json({
       message: 'Login successful',
       token,
+      refreshToken,
       user: formatUser(user)
     });
   } catch (err) {
@@ -364,6 +374,28 @@ export const resetPassword = async (req, res) => {
     saveDatabase();
 
     res.json({ message: 'Contraseña restablecida correctamente' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const refresh = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      return res.status(400).json({ error: 'Refresh token is required' });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ error: 'Invalid or expired refresh token' });
+    }
+
+    const token = generateToken(decoded.id, decoded.role);
+    const newRefreshToken = generateRefreshToken(decoded.id, decoded.role);
+    res.json({ token, refreshToken: newRefreshToken });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

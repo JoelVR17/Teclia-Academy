@@ -169,6 +169,84 @@ export const uploadContent = async (req, res) => {
   }
 };
 
+const removeFileFromStorageOrLocal = async (fileUrl) => {
+  if (!fileUrl) return;
+
+  const normalized = fileUrl.startsWith('/uploads/')
+    ? fileUrl.replace(/^\/uploads\//, '')
+    : fileUrl;
+
+  if (!normalized || normalized.startsWith('http')) {
+    return;
+  }
+
+  try {
+    await storage.delete(normalized);
+  } catch (_e) {
+    // ignore cleanup errors
+  }
+};
+
+export const updateContent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description, type, url } = req.body;
+    const file = req.file;
+
+    if (!title && !description && !type && !url && !file) {
+      return res.status(400).json({ error: 'At least one field must be provided' });
+    }
+
+    const db = getDb();
+    const existing = await db.exec('SELECT id, url FROM content WHERE id = ?', [id]);
+    if (existing.length === 0 || existing[0].values.length === 0) {
+      return res.status(404).json({ error: 'Content not found' });
+    }
+
+    const currentUrl = existing[0].values[0][1];
+    let finalUrl = url;
+
+    if (file) {
+      if (!finalUrl) {
+        finalUrl = await storage.upload(file, 'content');
+      }
+      await removeFileFromStorageOrLocal(currentUrl);
+    }
+
+    const updates = [];
+    const params = [];
+
+    if (title) {
+      updates.push('title = ?');
+      params.push(title);
+    }
+    if (description) {
+      updates.push('description = ?');
+      params.push(description);
+    }
+    if (type) {
+      updates.push('type = ?');
+      params.push(type);
+    }
+    if (finalUrl) {
+      updates.push('url = ?');
+      params.push(finalUrl);
+    }
+
+    params.push(id);
+    await db.run(`UPDATE content SET ${updates.join(', ')} WHERE id = ?`, params);
+    saveDatabase();
+
+    const updated = await db.exec('SELECT * FROM content WHERE id = ?', [id]);
+    const contentItem = mapContentRows(updated)[0];
+    const resolved = await resolveContentRows([contentItem]);
+
+    res.json({ message: 'Content updated', content: resolved[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 export const deleteContent = async (req, res) => {
   try {
     const { id } = req.params;
