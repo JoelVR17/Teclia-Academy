@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getRequestSignal, invokeLogout } from '../utils/authSession.js';
 
 export const BACKEND_BASE_URL = 'https://teclia-academia-2.onrender.com';
 const API_BASE_URL = `${BACKEND_BASE_URL}/api`;
@@ -10,14 +11,32 @@ const api = axios.create({
   },
 });
 
-// Add JWT token to requests
+const AUTH_ENDPOINTS = /\/auth\/(login|signup|forgot-password|reset-password)/;
+
+// Add JWT token and abort signal to requests
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('authToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  config.signal = getRequestSignal();
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const url = error.config?.url ?? '';
+    const isAuthEndpoint = AUTH_ENDPOINTS.test(url);
+
+    if (status === 401 && !isAuthEndpoint) {
+      invokeLogout({ reason: 'expired', showToast: true, redirectTo: '/auth/login' });
+    }
+
+    return Promise.reject(error);
+  },
+);
 
 export const authService = {
   signup: (email, password, name) =>

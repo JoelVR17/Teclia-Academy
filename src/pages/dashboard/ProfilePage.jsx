@@ -40,6 +40,28 @@ const vipPlans = [
   },
 ];
 
+const mapProfileError = (err) => {
+  if (!err.response) {
+    return { general: 'Error de conexión. Intenta de nuevo.', field: null };
+  }
+
+  const status = err.response.status;
+  const message = err.response.data?.error || 'No se pudo actualizar el perfil.';
+
+  if (status === 400) {
+    return { general: null, field: message };
+  }
+
+  return { general: message, field: null };
+};
+
+const mapPasswordError = (err) => {
+  if (!err.response) {
+    return 'Error de conexión. Intenta de nuevo.';
+  }
+  return err.response.data?.error || 'Error cambiando contraseña';
+};
+
 export const ProfilePage = () => {
   const { user, updateProfile } = useAuth();
   const [searchParams] = useSearchParams();
@@ -51,9 +73,12 @@ export const ProfilePage = () => {
   const [avatarFile, setAvatarFile] = useState(null);
   const [profileMessage, setProfileMessage] = useState(null);
   const [profileError, setProfileError] = useState(null);
+  const [nameFieldError, setNameFieldError] = useState(null);
+  const [profileSaving, setProfileSaving] = useState(false);
   const [changePassword, setChangePassword] = useState({ current: '', new: '', confirm: '' });
   const [passwordError, setPasswordError] = useState(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [passwordSaving, setPasswordSaving] = useState(false);
   const [showPassword, setShowPassword] = useState({ current: false, new: false, confirm: false });
   const [activePlan, setActivePlan] = useState(null);
   const [paymentInfo, setPaymentInfo] = useState({ cardNumber: '', expiry: '', cvc: '' });
@@ -76,6 +101,8 @@ export const ProfilePage = () => {
     e.preventDefault();
     setProfileMessage(null);
     setProfileError(null);
+    setNameFieldError(null);
+    setProfileSaving(true);
 
     try {
       let payload = undefined;
@@ -94,7 +121,14 @@ export const ProfilePage = () => {
       setAvatarFile(null);
       setTimeout(() => setProfileMessage(null), 3000);
     } catch (err) {
-      setProfileError(err.response?.data?.error || 'No se pudo actualizar el perfil.');
+      const { general, field } = mapProfileError(err);
+      if (field) {
+        setNameFieldError(field);
+      } else {
+        setProfileError(general);
+      }
+    } finally {
+      setProfileSaving(false);
     }
   };
 
@@ -115,12 +149,15 @@ export const ProfilePage = () => {
     }
 
     try {
+      setPasswordSaving(true);
       await authService.changePassword(changePassword.current, changePassword.new);
       setPasswordSuccess(true);
       setChangePassword({ current: '', new: '', confirm: '' });
       setTimeout(() => setPasswordSuccess(false), 3000);
     } catch (err) {
-      setPasswordError(err.response?.data?.error || 'Error cambiando contraseña');
+      setPasswordError(mapPasswordError(err));
+    } finally {
+      setPasswordSaving(false);
     }
   };
 
@@ -210,6 +247,7 @@ export const ProfilePage = () => {
                       <div className="profile-field">
                         <label>Nombre</label>
                         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" />
+                        {nameFieldError && <p className="field-error">{nameFieldError}</p>}
                       </div>
                       <div className="profile-field">
                         <label>Email</label>
@@ -224,7 +262,9 @@ export const ProfilePage = () => {
 
                   {profileError && <div className="error-message">{profileError}</div>}
                   {profileMessage && <div className="success-message">{profileMessage}</div>}
-                  <button type="submit" className="button button-primary">Guardar cambios</button>
+                  <button type="submit" className="button button-primary" disabled={profileSaving}>
+                    {profileSaving ? 'Guardando...' : 'Guardar cambios'}
+                  </button>
                 </form>
               </div>
             </div>
@@ -288,7 +328,9 @@ export const ProfilePage = () => {
                       </button>
                     </div>
                   </div>
-                  <button type="submit" className="button button-primary">Actualizar contraseña</button>
+                  <button type="submit" className="button button-primary" disabled={passwordSaving}>
+                    {passwordSaving ? 'Actualizando...' : 'Actualizar contraseña'}
+                  </button>
                 </form>
               </div>
             </div>
