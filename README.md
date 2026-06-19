@@ -11,7 +11,7 @@ This repository contains the full-stack code (frontend in the repository root an
 
 ## Features
 
-- Email/password authentication (JWT)
+- Email/password authentication (JWT):
 - User profiles with avatar uploads (Supabase storage or local uploads)
 - Content upload and access control by plan tier (free/basico/premium)
 - Basic site statistics tracking
