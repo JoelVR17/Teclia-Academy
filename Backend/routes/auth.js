@@ -15,21 +15,11 @@ import {
   listStudents,
 } from '../controllers/authController.js';
 import { verifyToken, adminOnly } from '../middleware/auth.js';
-import { getAvatarUploadsPath } from '../config/uploads.js';
 
 const router = express.Router();
 
-const avatarUploadsPath = getAvatarUploadsPath();
-const storage = multer.diskStorage({
-  destination: avatarUploadsPath,
-  filename: (req, file, cb) => {
-    const ext = file.originalname.split('.').pop()?.replace(/[^a-zA-Z0-9]/g, '') || 'jpg';
-    const safeName = `${req.user.id}-${Date.now()}.${ext}`;
-    cb(null, safeName);
-  },
-});
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {

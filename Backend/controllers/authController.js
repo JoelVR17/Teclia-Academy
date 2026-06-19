@@ -1,13 +1,11 @@
 import bcryptjs from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import sgMail from '@sendgrid/mail';
-import fs from 'fs';
-import path from 'path';
+import nodemailer from 'nodemailer';
 import { getDb, saveDatabase } from '../db/init.js';
-import { getUploadsPath } from '../config/uploads.js';
 import { validatePassword } from '../utils/password.js';
 import { listNonAdminUsers, mapUserRows, normalizeLegacyUsers, ensureUserColumn } from '../utils/dbUsers.js';
-import { uploadToStorage, getSignedStorageUrl, resolveStoragePath, deleteFromStorage } from '../lib/supabaseClient.js';
+import storage from '../storage/index.js';
 
 const normalizeEmail = (email) => email.trim().toLowerCase();
 
@@ -23,25 +21,18 @@ const formatUser = (user) => ({
 const removeFileFromStorageOrLocal = async (fileUrl) => {
   if (!fileUrl) return;
 
-  const storagePath = resolveStoragePath(fileUrl);
-  if (storagePath) {
-    try {
-      await deleteFromStorage(storagePath);
-    } catch (_e) {
-      // ignore cleanup errors
-    }
+  const normalized = fileUrl.startsWith('/uploads/')
+    ? fileUrl.replace(/^\/uploads\//, '')
+    : fileUrl;
+
+  if (!normalized || normalized.startsWith('http')) {
     return;
   }
 
-  if (fileUrl.startsWith('/uploads/')) {
-    const oldPath = path.join(getUploadsPath(), fileUrl.replace(/^\/uploads\//, ''));
-    if (fs.existsSync(oldPath)) {
-      try {
-        fs.unlinkSync(oldPath);
-      } catch (_e) {
-        // ignore cleanup errors
-      }
-    }
+  try {
+    await storage.delete(normalized);
+  } catch (_e) {
+    // ignore cleanup errors
   }
 };
 
@@ -160,9 +151,11 @@ export const login = async (req, res) => {
     }
 
     if (user.avatar_url) {
-      const avatarPath = resolveStoragePath(user.avatar_url);
-      if (avatarPath) {
-        user.avatar_url = await getSignedStorageUrl(avatarPath);
+      const normalized = user.avatar_url.startsWith('/uploads/')
+        ? user.avatar_url.replace(/^\/uploads\//, '')
+        : user.avatar_url;
+      if (!user.avatar_url.startsWith('http')) {
+        user.avatar_url = storage.resolveUrl(normalized);
       }
     }
 
@@ -191,9 +184,11 @@ export const getMe = async (req, res) => {
     cols.forEach((c, i) => (user[c] = vals[i]));
 
     if (user.avatar_url) {
-      const avatarPath = resolveStoragePath(user.avatar_url);
-      if (avatarPath) {
-        user.avatar_url = await getSignedStorageUrl(avatarPath);
+      const normalized = user.avatar_url.startsWith('/uploads/')
+        ? user.avatar_url.replace(/^\/uploads\//, '')
+        : user.avatar_url;
+      if (!user.avatar_url.startsWith('http')) {
+        user.avatar_url = storage.resolveUrl(normalized);
       }
     }
 
@@ -231,14 +226,9 @@ export const updateProfile = async (req, res) => {
     if (avatarFile) {
       await removeFileFromStorageOrLocal(currentUser.avatar_url);
 
-      const storagePath = `avatars/${req.user.id}-${Date.now()}-${avatarFile.filename}`;
-      const fileBuffer = fs.readFileSync(avatarFile.path);
-      await uploadToStorage(storagePath, fileBuffer, avatarFile.mimetype);
-
+      const storagePath = await storage.upload(avatarFile, 'avatars');
       updates.push('avatar_url = ?');
       params.push(storagePath);
-
-      fs.unlinkSync(avatarFile.path);
     } else if (avatarUrl) {
       updates.push('avatar_url = ?');
       params.push(avatarUrl);
@@ -255,9 +245,11 @@ export const updateProfile = async (req, res) => {
     updatedCols.forEach((c, i) => (user[c] = updatedVals[i]));
 
     if (user.avatar_url) {
-      const avatarPath = resolveStoragePath(user.avatar_url);
-      if (avatarPath) {
-        user.avatar_url = await getSignedStorageUrl(avatarPath);
+      const normalized = user.avatar_url.startsWith('/uploads/')
+        ? user.avatar_url.replace(/^\/uploads\//, '')
+        : user.avatar_url;
+      if (!user.avatar_url.startsWith('http')) {
+        user.avatar_url = storage.resolveUrl(normalized);
       }
     }
 

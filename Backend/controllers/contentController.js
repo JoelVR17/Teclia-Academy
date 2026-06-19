@@ -1,9 +1,7 @@
 import jwt from 'jsonwebtoken';
-import fs from 'fs';
-import path from 'path';
 import { getDb, saveDatabase } from '../db/init.js';
 import { canAccessPlan, PLAN_TIERS } from '../utils/plans.js';
-import { uploadToStorage, getSignedStorageUrl, deleteFromStorage, resolveStoragePath } from '../lib/supabaseClient.js';
+import storage from '../storage/index.js';
 
 const parseOptionalUser = (req) => {
   const token = req.headers.authorization?.split(' ')[1];
@@ -38,11 +36,11 @@ const mapContentRows = (result) => {
 const resolveContentRows = async (content) => {
   return Promise.all(
     content.map(async (item) => {
-      if (item.url) {
-        const storagePath = resolveStoragePath(item.url);
-        if (storagePath) {
-          item.url = await getSignedStorageUrl(storagePath);
-        }
+      if (item.url && !item.url.startsWith('http')) {
+        const normalized = item.url.startsWith('/uploads/')
+          ? item.url.replace(/^\/uploads\//, '')
+          : item.url;
+        item.url = storage.resolveUrl(normalized);
       }
       return item;
     })
@@ -115,20 +113,15 @@ export const uploadContent = async (req, res) => {
     const { title, description, type, url, is_free, plan_tier } = req.body;
 
     let finalUrl = url;
-    let storagePath = null;
-    if (req.file) {
-      storagePath = `content/${req.file.filename}`;
-    }
 
-    if (!title || !type || (!finalUrl && !storagePath)) {
+    if (!title || !type || (!finalUrl && !req.file)) {
       return res.status(400).json({ error: 'Title, type and url/file are required' });
     }
 
-    if (req.file && storagePath) {
-      const fileBuffer = fs.readFileSync(req.file.path);
-      await uploadToStorage(storagePath, fileBuffer, req.file.mimetype);
+    let storagePath = null;
+    if (req.file) {
+      storagePath = await storage.upload(req.file, 'content');
       finalUrl = storagePath;
-      fs.unlinkSync(req.file.path);
     }
 
     const selectedPlan = plan_tier || (is_free === '1' || is_free === 'true' || is_free === 'on' ? 'free' : 'basico');
@@ -167,7 +160,7 @@ export const uploadContent = async (req, res) => {
     };
 
     if (storagePath) {
-      content.url = await getSignedStorageUrl(storagePath);
+      content.url = storage.resolveUrl(storagePath);
     }
 
     res.json({ message: 'Content uploaded', content });
@@ -187,10 +180,12 @@ export const deleteContent = async (req, res) => {
     }
 
     const fileUrl = found[0].values[0][0];
-    const bucketPath = fileUrl ? resolveStoragePath(fileUrl) : null;
-    if (bucketPath) {
+    const storagePath = fileUrl && !fileUrl.startsWith('http')
+      ? (fileUrl.startsWith('/uploads/') ? fileUrl.replace(/^\/uploads\//, '') : fileUrl)
+      : null;
+    if (storagePath) {
       try {
-        await deleteFromStorage(bucketPath);
+        await storage.delete(storagePath);
       } catch (_e) {
         // ignore cleanup error
       }

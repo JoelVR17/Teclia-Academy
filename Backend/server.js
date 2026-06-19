@@ -1,11 +1,15 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import 'dotenv/config';
 import { initDb } from './db/init.js';
 import authRoutes from './routes/auth.js';
 import contentRoutes from './routes/content.js';
 import statsRoutes from './routes/stats.js';
-import { getUploadsPath } from './config/uploads.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -21,9 +25,10 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-const uploadsPath = getUploadsPath();
-
-app.use('/uploads', express.static(uploadsPath));
+if (process.env.LOCAL_UPLOADS === 'true') {
+  const localUploadsPath = path.join(__dirname, 'uploads');
+  app.use('/uploads', express.static(localUploadsPath));
+}
 
 // Routes
 app.use('/api/auth', authRoutes);
