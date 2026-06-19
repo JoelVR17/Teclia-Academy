@@ -2,6 +2,7 @@ node_modules/
 .env/
 dist/
 db/*.db
-uploads/
+uploads/*
+!uploads/.gitkeep
 db/*.tmp
 db/*.bak
