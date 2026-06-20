@@ -4,6 +4,7 @@ import {
   signup,
   login,
   logout,
+  refresh,
   getMe,
   updateProfile,
   changePassword,
@@ -15,6 +16,9 @@ import {
   listStudents,
 } from '../controllers/authController.js';
 import { verifyToken, adminOnly } from '../middleware/auth.js';
+import validate from '../middleware/validate.js';
+import { authLimiter } from '../middleware/rateLimiter.js';
+import * as authSchemas from '../schemas/auth.schema.js';
 
 const router = express.Router();
 
@@ -30,15 +34,16 @@ const upload = multer({
   },
 });
 
-router.post('/signup', signup);
-router.post('/login', login);
+router.post('/signup', authLimiter, validate(authSchemas.register), signup);
+router.post('/login', authLimiter, validate(authSchemas.login), login);
+router.post('/refresh', authLimiter, validate(authSchemas.refresh), refresh);
 router.post('/logout', logout);
 router.get('/me', verifyToken, getMe);
 router.patch('/profile', verifyToken, upload.single('avatar'), updateProfile);
 router.post('/change-password', verifyToken, changePassword);
-router.post('/forgot-password', forgotPassword);
-router.post('/reset-password', resetPassword);
-router.post('/verify-recovery-email', verifyRecoveryEmail);
+router.post('/forgot-password', authLimiter, validate(authSchemas.forgotPassword), forgotPassword);
+router.post('/reset-password', authLimiter, validate(authSchemas.resetPassword), resetPassword);
+router.post('/verify-recovery-email', validate(authSchemas.verifyRecoveryEmail), verifyRecoveryEmail);
 router.get('/students', verifyToken, adminOnly, listStudents);
 router.patch('/students/:id/plan', verifyToken, adminOnly, updateStudentPlan);
 router.delete('/students/:id', verifyToken, adminOnly, deleteStudent);

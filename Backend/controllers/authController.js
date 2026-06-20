@@ -1,22 +1,22 @@
-import bcryptjs from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import sgMail from '@sendgrid/mail';
-import prisma from '../utils/prismaClient.js';
-import { validatePassword } from '../utils/password.js';
-import { listNonAdminUsers } from '../utils/dbUsers.js';
-import { formatUser, formatUserWithCreatedAt } from '../utils/serializers.js';
-import storage from '../storage/index.js';
+import bcryptjs from "bcryptjs";
+import jwt from "jsonwebtoken";
+import sgMail from "@sendgrid/mail";
+import prisma from "../utils/prismaClient.js";
+import { validatePassword } from "../utils/password.js";
+import { listNonAdminUsers } from "../utils/dbUsers.js";
+import { formatUser, formatUserWithCreatedAt } from "../utils/serializers.js";
+import storage from "../storage/index.js";
 
 const normalizeEmail = (email) => email.trim().toLowerCase();
 
 const resolveAvatarUrl = (avatarUrl) => {
   if (!avatarUrl) return null;
 
-  const normalized = avatarUrl.startsWith('/uploads/')
-    ? avatarUrl.replace(/^\/uploads\//, '')
+  const normalized = avatarUrl.startsWith("/uploads/")
+    ? avatarUrl.replace(/^\/uploads\//, "")
     : avatarUrl;
 
-  if (avatarUrl.startsWith('http')) {
+  if (avatarUrl.startsWith("http")) {
     return avatarUrl;
   }
 
@@ -31,11 +31,11 @@ const formatUserResponse = (user) => ({
 const removeFileFromStorageOrLocal = async (fileUrl) => {
   if (!fileUrl) return;
 
-  const normalized = fileUrl.startsWith('/uploads/')
-    ? fileUrl.replace(/^\/uploads\//, '')
+  const normalized = fileUrl.startsWith("/uploads/")
+    ? fileUrl.replace(/^\/uploads\//, "")
     : fileUrl;
 
-  if (!normalized || normalized.startsWith('http')) {
+  if (!normalized || normalized.startsWith("http")) {
     return;
   }
 
@@ -48,7 +48,24 @@ const removeFileFromStorageOrLocal = async (fileUrl) => {
 
 const generateToken = (userId, role) => {
   return jwt.sign({ id: userId, role }, process.env.JWT_SECRET, {
-    expiresIn: '24h',
+    expiresIn: "24h",
+  });
+};
+
+const generateRefreshToken = (userId, role) => {
+  return jwt.sign({ id: userId, role }, process.env.JWT_SECRET, {
+    expiresIn: "7d",
+  });
+};
+
+const createMailTransport = () => {
+  return nodemailer.createTransport({
+    host: "smtp.sendgrid.net",
+    port: 587,
+    auth: {
+      user: "apikey",
+      pass: process.env.SENDGRID_API_KEY,
+    },
   });
 };
 
@@ -57,19 +74,19 @@ const sendResetPinEmail = async (email, pin) => {
 
   const msg = {
     to: email,
-    from: 'austincomputadora@gmail.com',
-    subject: 'Tu código para recuperar contraseña de Teclia',
+    from: "austincomputadora@gmail.com",
+    subject: "Tu código para recuperar contraseña de Teclia",
     text: `Tu código para restablecer la contraseña es: ${pin}. Este código expira en 15 minutos.`,
     html: `<p>Tu código para restablecer la contraseña es: <strong>${pin}</strong>.</p><p>Este código expira en 15 minutos.</p>`,
   };
 
-  console.log('📨 Sending email to:', email);
+  console.log("📨 Sending email to:", email);
 
   try {
     await sgMail.send(msg);
-    console.log('✅ Email sent successfully');
+    console.log("✅ Email sent successfully");
   } catch (error) {
-    console.error('❌ Email error:', error.response?.body || error);
+    console.error("❌ Email error:", error.response?.body || error);
     throw error;
   }
 };
@@ -79,7 +96,9 @@ export const signup = async (req, res) => {
     const { email, password, name } = req.body;
 
     if (!email || !password || !name) {
-      return res.status(400).json({ error: 'Email, password, and name are required' });
+      return res
+        .status(400)
+        .json({ error: "Email, password, and name are required" });
     }
 
     const passwordError = validatePassword(password);
@@ -90,11 +109,11 @@ export const signup = async (req, res) => {
     const normalizedEmail = normalizeEmail(email);
 
     const existingUser = await prisma.user.findFirst({
-      where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+      where: { email: { equals: normalizedEmail, mode: "insensitive" } },
     });
 
     if (existingUser) {
-      return res.status(400).json({ error: 'Email already registered' });
+      return res.status(400).json({ error: "Email already registered" });
     }
 
     const hashedPassword = bcryptjs.hashSync(password, 10);
@@ -104,15 +123,27 @@ export const signup = async (req, res) => {
         email: normalizedEmail,
         passwordHash: hashedPassword,
         name,
-        role: 'student',
+        role: "student",
       },
     });
 
-    const token = generateToken(user.id, 'student');
+    saveDatabase();
+
+    const userId = insertResult[0].values[0][0];
+
+    const token = generateToken(userId, "student");
+    const refreshToken = generateRefreshToken(userId, "student");
     res.json({
-      message: 'User created successfully',
+      message: "User created successfully",
       token,
-      user: formatUserResponse(user),
+      refreshToken,
+      user: {
+        id: userId,
+        email: normalizedEmail,
+        name,
+        role: "student",
+        avatar_url: null,
+      },
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -124,29 +155,31 @@ export const login = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+      return res.status(400).json({ error: "Email and password are required" });
     }
 
     const normalizedEmail = normalizeEmail(email);
     const user = await prisma.user.findFirst({
-      where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+      where: { email: { equals: normalizedEmail, mode: "insensitive" } },
     });
 
     if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: "Invalid credentials" });
     }
 
     const passwordMatch = bcryptjs.compareSync(password, user.passwordHash);
 
     if (!passwordMatch) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: "Invalid credentials" });
     }
 
     const token = generateToken(user.id, user.role);
+    const refreshToken = generateRefreshToken(user.id, user.role);
     res.json({
-      message: 'Login successful',
+      message: "Login successful",
       token,
-      user: formatUserResponse(user),
+      refreshToken,
+      user: formatUser(user),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -160,7 +193,7 @@ export const getMe = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: "User not found" });
     }
 
     res.json({ user: formatUserResponse(user) });
@@ -175,7 +208,7 @@ export const updateProfile = async (req, res) => {
     const avatarFile = req.file;
 
     if (!name && !avatarUrl && !avatarFile) {
-      return res.status(400).json({ error: 'No profile information provided' });
+      return res.status(400).json({ error: "No profile information provided" });
     }
 
     const currentUser = await prisma.user.findUnique({
@@ -183,7 +216,7 @@ export const updateProfile = async (req, res) => {
     });
 
     if (!currentUser) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: "User not found" });
     }
 
     const data = {};
@@ -194,7 +227,7 @@ export const updateProfile = async (req, res) => {
 
     if (avatarFile) {
       await removeFileFromStorageOrLocal(currentUser.avatarUrl);
-      data.avatarUrl = await storage.upload(avatarFile, 'avatars');
+      data.avatarUrl = await storage.upload(avatarFile, "avatars");
     } else if (avatarUrl) {
       data.avatarUrl = avatarUrl;
     }
@@ -204,7 +237,10 @@ export const updateProfile = async (req, res) => {
       data,
     });
 
-    res.json({ message: 'Profile updated successfully', user: formatUserResponse(user) });
+    res.json({
+      message: "Profile updated successfully",
+      user: formatUserResponse(user),
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -215,7 +251,9 @@ export const changePassword = async (req, res) => {
     const { currentPassword, newPassword } = req.body;
 
     if (!currentPassword || !newPassword) {
-      return res.status(400).json({ error: 'Current and new password are required' });
+      return res
+        .status(400)
+        .json({ error: "Current and new password are required" });
     }
 
     const passwordError = validatePassword(newPassword);
@@ -228,11 +266,11 @@ export const changePassword = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: "User not found" });
     }
 
     if (!bcryptjs.compareSync(currentPassword, user.passwordHash)) {
-      return res.status(401).json({ error: 'Contraseña actual incorrecta' });
+      return res.status(401).json({ error: "Contraseña actual incorrecta" });
     }
 
     const hashedPassword = bcryptjs.hashSync(newPassword, 10);
@@ -241,7 +279,7 @@ export const changePassword = async (req, res) => {
       data: { passwordHash: hashedPassword },
     });
 
-    res.json({ message: 'Contraseña actualizada correctamente' });
+    res.json({ message: "Contraseña actualizada correctamente" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -252,17 +290,18 @@ export const forgotPassword = async (req, res) => {
     const { email } = req.body;
 
     if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
+      return res.status(400).json({ error: "Email is required" });
     }
 
     const normalizedEmail = normalizeEmail(email);
     const user = await prisma.user.findFirst({
-      where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+      where: { email: { equals: normalizedEmail, mode: "insensitive" } },
     });
 
     if (!user) {
       return res.status(404).json({
-        error: 'Este correo no está registrado. Debes usar el mismo correo con el que iniciaste sesión.',
+        error:
+          "Este correo no está registrado. Debes usar el mismo correo con el que iniciaste sesión.",
       });
     }
 
@@ -276,7 +315,9 @@ export const forgotPassword = async (req, res) => {
 
     await sendResetPinEmail(user.email, pin);
 
-    res.json({ message: 'Se ha enviado un PIN de recuperación al correo electrónico' });
+    res.json({
+      message: "Se ha enviado un PIN de recuperación al correo electrónico",
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -287,7 +328,9 @@ export const resetPassword = async (req, res) => {
     const { email, pin, newPassword } = req.body;
 
     if (!email || !pin || !newPassword) {
-      return res.status(400).json({ error: 'Email, PIN y nueva contraseña son requeridos' });
+      return res
+        .status(400)
+        .json({ error: "Email, PIN y nueva contraseña son requeridos" });
     }
 
     const passwordError = validatePassword(newPassword);
@@ -297,19 +340,24 @@ export const resetPassword = async (req, res) => {
 
     const normalizedEmail = normalizeEmail(email);
     const user = await prisma.user.findFirst({
-      where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+      where: { email: { equals: normalizedEmail, mode: "insensitive" } },
     });
 
     if (!user) {
-      return res.status(404).json({ error: 'Este correo no está registrado. Usa el mismo correo con el que iniciaste sesión.' });
+      return res
+        .status(404)
+        .json({
+          error:
+            "Este correo no está registrado. Usa el mismo correo con el que iniciaste sesión.",
+        });
     }
 
     if (!user.resetPin || user.resetPin !== pin) {
-      return res.status(401).json({ error: 'PIN inválido' });
+      return res.status(401).json({ error: "PIN inválido" });
     }
 
     if (user.resetPinExpiresAt && user.resetPinExpiresAt < new Date()) {
-      return res.status(401).json({ error: 'El PIN ha expirado' });
+      return res.status(401).json({ error: "El PIN ha expirado" });
     }
 
     const hashedPassword = bcryptjs.hashSync(newPassword, 10);
@@ -322,14 +370,38 @@ export const resetPassword = async (req, res) => {
       },
     });
 
-    res.json({ message: 'Contraseña restablecida correctamente' });
+    res.json({ message: "Contraseña restablecida correctamente" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-export const logout = async (_req, res) => {
-  res.json({ message: 'Logout successful' });
+export const refresh = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      return res.status(400).json({ error: "Refresh token is required" });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+    } catch (err) {
+      return res
+        .status(401)
+        .json({ error: "Invalid or expired refresh token" });
+    }
+
+    const token = generateToken(decoded.id, decoded.role);
+    const newRefreshToken = generateRefreshToken(decoded.id, decoded.role);
+    res.json({ token, refreshToken: newRefreshToken });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const logout = async (req, res) => {
+  res.json({ message: "Logout successful" });
 };
 
 export const verifyRecoveryEmail = async (req, res) => {
@@ -337,17 +409,17 @@ export const verifyRecoveryEmail = async (req, res) => {
     const { email } = req.body;
 
     if (!email) {
-      return res.status(400).json({ error: 'El correo es obligatorio' });
+      return res.status(400).json({ error: "El correo es obligatorio" });
     }
 
     const normalizedEmail = normalizeEmail(email);
     const user = await prisma.user.findFirst({
-      where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+      where: { email: { equals: normalizedEmail, mode: "insensitive" } },
     });
 
     if (!user) {
       return res.status(404).json({
-        error: 'No existe una cuenta registrada con este correo.',
+        error: "No existe una cuenta registrada con este correo.",
       });
     }
 
@@ -372,21 +444,30 @@ export const updateStudentPlan = async (req, res) => {
     const { plan_tier } = req.body;
     const userId = Number(id);
 
-    if (plan_tier !== null && plan_tier !== '' && !['basico', 'pro', 'master'].includes(plan_tier)) {
-      return res.status(400).json({ error: 'Plan no válido. Opciones: basico, pro, master' });
+    if (
+      plan_tier !== null &&
+      plan_tier !== "" &&
+      !["basico", "pro", "master"].includes(plan_tier)
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Plan no válido. Opciones: basico, pro, master" });
     }
 
-    const normalizedPlan = plan_tier === '' || plan_tier === null ? null : plan_tier;
-    const newRole = normalizedPlan ? 'premium' : 'student';
+    const normalizedPlan =
+      plan_tier === "" || plan_tier === null ? null : plan_tier;
+    const newRole = normalizedPlan ? "premium" : "student";
 
     const found = await prisma.user.findUnique({ where: { id: userId } });
 
     if (!found) {
-      return res.status(404).json({ error: 'Estudiante no encontrado' });
+      return res.status(404).json({ error: "Estudiante no encontrado" });
     }
 
-    if (found.role === 'admin') {
-      return res.status(400).json({ error: 'No se puede modificar un administrador' });
+    if (found.role === "admin") {
+      return res
+        .status(400)
+        .json({ error: "No se puede modificar un administrador" });
     }
 
     const student = await prisma.user.update({
@@ -395,7 +476,9 @@ export const updateStudentPlan = async (req, res) => {
     });
 
     res.json({
-      message: normalizedPlan ? `Plan ${normalizedPlan} asignado correctamente` : 'Plan removido correctamente',
+      message: normalizedPlan
+        ? `Plan ${normalizedPlan} asignado correctamente`
+        : "Plan removido correctamente",
       student: formatUserWithCreatedAt(student),
     });
   } catch (err) {
@@ -410,11 +493,13 @@ export const deleteStudent = async (req, res) => {
     const found = await prisma.user.findUnique({ where: { id: userId } });
 
     if (!found) {
-      return res.status(404).json({ error: 'Estudiante no encontrado' });
+      return res.status(404).json({ error: "Estudiante no encontrado" });
     }
 
-    if (found.role === 'admin') {
-      return res.status(400).json({ error: 'No se puede eliminar una cuenta de administrador' });
+    if (found.role === "admin") {
+      return res
+        .status(400)
+        .json({ error: "No se puede eliminar una cuenta de administrador" });
     }
 
     await removeFileFromStorageOrLocal(found.avatarUrl);
@@ -431,7 +516,7 @@ export const deleteStudent = async (req, res) => {
     await prisma.content.deleteMany({ where: { uploadedBy: userId } });
     await prisma.user.delete({ where: { id: userId } });
 
-    res.json({ message: 'Cuenta eliminada correctamente' });
+    res.json({ message: "Cuenta eliminada correctamente" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
