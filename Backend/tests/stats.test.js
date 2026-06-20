@@ -1,6 +1,6 @@
 import request from 'supertest';
 import app from '../app.js';
-import { setupTestDb } from './helpers/db.setup.js';
+import { setupTestDb, promoteUserToAdmin } from './helpers/db.setup.js';
 import { adminUser } from './fixtures/users.js';
 
 setupTestDb();
@@ -21,8 +21,7 @@ describe('Stats endpoints', () => {
 
     // create admin and promote before login
     await request(app).post('/api/auth/signup').send({ name: adminUser.name, email: adminUser.email, password: adminUser.password });
-    const db = (await import('../db/init.js')).getDb();
-    await db.run("UPDATE users SET role = 'admin' WHERE LOWER(email) = ?", [adminUser.email]);
+    await promoteUserToAdmin(adminUser.email);
     const login = await request(app).post('/api/auth/login').send({ email: adminUser.email, password: adminUser.password });
     const token = login.body.token;
 

@@ -1,0 +1,45 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                Int       @id @default(autoincrement())
+  email             String    @unique
+  passwordHash      String    @map("password_hash")
+  name              String
+  role              String?   @default("student")
+  avatarUrl         String?   @map("avatar_url")
+  resetPin          String?   @map("reset_pin")
+  resetPinExpiresAt DateTime? @map("reset_pin_expires_at")
+  planTier          String?   @map("plan_tier")
+  createdAt         DateTime? @default(now()) @map("created_at")
+  content           Content[]
+
+  @@map("users")
+}
+
+model Content {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String?
+  type        String
+  url         String
+  isFree      Int       @default(0) @map("is_free")
+  planTier    String?   @default("free") @map("plan_tier")
+  uploadedBy  Int       @map("uploaded_by")
+  createdAt   DateTime? @default(now()) @map("created_at")
+  uploader    User      @relation(fields: [uploadedBy], references: [id])
+
+  @@map("content")
+}
+
+model SiteStat {
+  key   String @id
+  value Int    @default(0)
+
+  @@map("site_stats")
+}

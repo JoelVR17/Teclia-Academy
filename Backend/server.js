@@ -3,7 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import 'dotenv/config';
-import { initDb } from './db/init.js';
+import { connectDb } from './db/init.js';
 import authRoutes from './routes/auth.js';
 import contentRoutes from './routes/content.js';
 import statsRoutes from './routes/stats.js';
@@ -47,7 +47,7 @@ app.use((err, req, res, next) => {
 });
 
 // Initialize database and start server
-initDb()
+connectDb()
   .then(() => {
     console.log('✓ Database initialized');
     app.listen(PORT, '0.0.0.0', () => {

@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
-import { getDb, saveDatabase } from '../db/init.js';
+import prisma from '../utils/prismaClient.js';
 import { canAccessPlan, PLAN_TIERS } from '../utils/plans.js';
+import { formatContent } from '../utils/serializers.js';
 import storage from '../storage/index.js';
 
 const parseOptionalUser = (req) => {
@@ -14,35 +15,26 @@ const parseOptionalUser = (req) => {
 };
 
 const getUserAccess = async (userId) => {
-  const db = getDb();
-  const result = await db.exec('SELECT role, plan_tier FROM users WHERE id = ?', [userId]);
-  if (result.length === 0 || result[0].values.length === 0) return null;
-  return { role: result[0].values[0][0], plan_tier: result[0].values[0][1] };
-};
-
-const mapContentRows = (result) => {
-  if (result.length === 0) return [];
-  const columns = result[0].columns;
-  return result[0].values.map((row) => {
-    const obj = {};
-    columns.forEach((col, idx) => {
-      obj[col] = row[idx];
-    });
-    obj.plan_tier = obj.plan_tier || (obj.is_free ? 'free' : 'basico');
-    return obj;
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, planTier: true },
   });
+
+  if (!user) return null;
+  return { role: user.role, plan_tier: user.planTier };
 };
 
-const resolveContentRows = async (content) => {
+const resolveContentUrls = async (items) => {
   return Promise.all(
-    content.map(async (item) => {
-      if (item.url && !item.url.startsWith('http')) {
-        const normalized = item.url.startsWith('/uploads/')
-          ? item.url.replace(/^\/uploads\//, '')
-          : item.url;
-        item.url = storage.resolveUrl(normalized);
+    items.map(async (item) => {
+      const formatted = { ...item };
+      if (formatted.url && !formatted.url.startsWith('http')) {
+        const normalized = formatted.url.startsWith('/uploads/')
+          ? formatted.url.replace(/^\/uploads\//, '')
+          : formatted.url;
+        formatted.url = storage.resolveUrl(normalized);
       }
-      return item;
+      return formatted;
     })
   );
 };
@@ -57,18 +49,16 @@ const filterContentForUser = (content, access) => {
 
 export const getContent = async (req, res) => {
   try {
-    const db = getDb();
-    const result = await db.exec(`
-      SELECT c.*, u.name as uploaded_by_name FROM content c
-      LEFT JOIN users u ON c.uploaded_by = u.id
-      ORDER BY c.created_at DESC
-    `);
+    const rows = await prisma.content.findMany({
+      include: { uploader: { select: { name: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
 
-    const allContent = mapContentRows(result);
+    const allContent = rows.map(formatContent);
     const tokenUser = parseOptionalUser(req);
     const access = tokenUser ? await getUserAccess(tokenUser.id) : null;
     let content = filterContentForUser(allContent, access);
-    content = await resolveContentRows(content);
+    content = await resolveContentUrls(content);
 
     res.json({ content });
   } catch (err) {
@@ -78,21 +68,17 @@ export const getContent = async (req, res) => {
 
 export const getContentById = async (req, res) => {
   try {
-    const { id } = req.params;
-    const db = getDb();
+    const id = Number(req.params.id);
+    const row = await prisma.content.findUnique({
+      where: { id },
+      include: { uploader: { select: { name: true } } },
+    });
 
-    const result = await db.exec(
-      `SELECT c.*, u.name as uploaded_by_name FROM content c
-       LEFT JOIN users u ON c.uploaded_by = u.id
-       WHERE c.id = ?`,
-      [id]
-    );
-
-    if (result.length === 0 || result[0].values.length === 0) {
+    if (!row) {
       return res.status(404).json({ error: 'Content not found' });
     }
 
-    let content = mapContentRows(result)[0];
+    let content = formatContent(row);
     const tokenUser = parseOptionalUser(req);
     const access = tokenUser ? await getUserAccess(tokenUser.id) : null;
 
@@ -100,9 +86,9 @@ export const getContentById = async (req, res) => {
       return res.status(403).json({ error: 'No tienes acceso a este contenido con tu plan actual' });
     }
 
-    content = await resolveContentRows([content]);
+    [content] = await resolveContentUrls([content]);
 
-    res.json({ content: content[0] });
+    res.json({ content });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -129,7 +115,6 @@ export const uploadContent = async (req, res) => {
       return res.status(400).json({ error: 'Plan de contenido no válido' });
     }
 
-    const db = getDb();
     const uploaderId = req.user?.id;
 
     if (!uploaderId) {
@@ -138,26 +123,19 @@ export const uploadContent = async (req, res) => {
 
     const freeFlag = selectedPlan === 'free' ? 1 : 0;
 
-    const insertResult = await db.exec(
-      'INSERT INTO content (title, description, type, url, is_free, plan_tier, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id',
-      [title, description || '', type, finalUrl, freeFlag, selectedPlan, uploaderId]
-    );
+    const created = await prisma.content.create({
+      data: {
+        title,
+        description: description || '',
+        type,
+        url: finalUrl,
+        isFree: freeFlag,
+        planTier: selectedPlan,
+        uploadedBy: uploaderId,
+      },
+    });
 
-    saveDatabase();
-
-    const newId = insertResult[0].values[0][0];
-
-    const content = {
-      id: newId,
-      title,
-      description: description || '',
-      type,
-      url: finalUrl,
-      is_free: freeFlag,
-      plan_tier: selectedPlan,
-      uploaded_by: uploaderId,
-      created_at: new Date().toISOString(),
-    };
+    const content = formatContent(created);
 
     if (storagePath) {
       content.url = storage.resolveUrl(storagePath);
@@ -249,18 +227,17 @@ export const updateContent = async (req, res) => {
 
 export const deleteContent = async (req, res) => {
   try {
-    const { id } = req.params;
-    const db = getDb();
+    const id = Number(req.params.id);
+    const found = await prisma.content.findUnique({ where: { id } });
 
-    const found = await db.exec('SELECT url FROM content WHERE id = ?', [id]);
-    if (found.length === 0 || found[0].values.length === 0) {
+    if (!found) {
       return res.status(404).json({ error: 'Content not found' });
     }
 
-    const fileUrl = found[0].values[0][0];
-    const storagePath = fileUrl && !fileUrl.startsWith('http')
-      ? (fileUrl.startsWith('/uploads/') ? fileUrl.replace(/^\/uploads\//, '') : fileUrl)
+    const storagePath = found.url && !found.url.startsWith('http')
+      ? (found.url.startsWith('/uploads/') ? found.url.replace(/^\/uploads\//, '') : found.url)
       : null;
+
     if (storagePath) {
       try {
         await storage.delete(storagePath);
@@ -269,8 +246,7 @@ export const deleteContent = async (req, res) => {
       }
     }
 
-    await db.run('DELETE FROM content WHERE id = ?', [id]);
-    saveDatabase();
+    await prisma.content.delete({ where: { id } });
 
     res.json({ message: 'Content deleted' });
   } catch (err) {
@@ -278,19 +254,18 @@ export const deleteContent = async (req, res) => {
   }
 };
 
-export const getFreeContent = async (req, res) => {
+export const getFreeContent = async (_req, res) => {
   try {
-    const db = getDb();
+    const rows = await prisma.content.findMany({
+      where: {
+        OR: [{ planTier: 'free' }, { isFree: 1 }],
+      },
+      include: { uploader: { select: { name: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
 
-    const result = await db.exec(`
-      SELECT c.*, u.name as uploaded_by_name FROM content c
-      LEFT JOIN users u ON c.uploaded_by = u.id
-      WHERE c.plan_tier = 'free' OR c.is_free = 1
-      ORDER BY c.created_at DESC
-    `);
-
-    let content = mapContentRows(result);
-    content = await resolveContentRows(content);
+    let content = rows.map(formatContent);
+    content = await resolveContentUrls(content);
     res.json({ content });
   } catch (err) {
     res.status(500).json({ error: err.message });
