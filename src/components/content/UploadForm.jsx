@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useContent } from '../../context/ContentContext.jsx';
 import { BACKEND_BASE_URL } from '../../services/api.js';
 import { CONTENT_PLANS } from '../../utils/plans.js';
+import { getStoredToken } from '../../utils/jwt.js';
 
 export const UploadForm = () => {
   const [title, setTitle] = useState('');
@@ -30,7 +31,7 @@ export const UploadForm = () => {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('authToken');
+      const token = getStoredToken();
       const form = new FormData();
       form.append('title', title);
       form.append('description', description);

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
 import { validatePassword, PASSWORD_HINT } from '../../utils/password.js';
+import { PasswordStrengthMeter } from '../../components/common/PasswordStrengthMeter.jsx';
 
 export const SignupPage = () => {
   const [name, setName] = useState('');
@@ -96,6 +97,7 @@ export const SignupPage = () => {
                   {showPassword ? '🙈' : '👁️'}
                 </button>
               </div>
+              <PasswordStrengthMeter password={password} />
               <p className="field-hint">{PASSWORD_HINT}</p>
             </div>
 

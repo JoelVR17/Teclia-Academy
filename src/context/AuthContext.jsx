@@ -5,7 +5,7 @@ import {
   registerLogoutHandler,
   registerSessionExpiredToastHandler,
 } from '../utils/authSession.js';
-import { clearStoredToken, getStoredToken, isTokenExpired } from '../utils/jwt.js';
+import { clearStoredToken, getStoredToken, isTokenExpired, setStoredToken, generateCsrfToken } from '../utils/jwt.js';
 import { getStoredAvatar, storeAvatar } from '../utils/avatar.js';
 
 const AuthContext = createContext();
@@ -122,7 +122,8 @@ export const AuthProvider = ({ children, onSessionExpiredToast }) => {
       setError(null);
       const normalizedEmail = email.trim().toLowerCase();
       const res = await authService.login(normalizedEmail, password);
-      localStorage.setItem('authToken', res.data.token);
+      setStoredToken(res.data.token);
+      generateCsrfToken();
       localStorage.setItem('lastLoginEmail', normalizedEmail);
       const enriched = enrichUser(res.data.user);
       if (enriched?.avatar_url) {
@@ -143,7 +144,8 @@ export const AuthProvider = ({ children, onSessionExpiredToast }) => {
       setError(null);
       const normalizedEmail = email.trim().toLowerCase();
       const res = await authService.signup(normalizedEmail, password, name);
-      localStorage.setItem('authToken', res.data.token);
+      setStoredToken(res.data.token);
+      generateCsrfToken();
       localStorage.setItem('lastLoginEmail', normalizedEmail);
       const enriched = enrichUser(res.data.user);
       setToken(res.data.token);
