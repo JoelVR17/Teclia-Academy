@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getRequestSignal, invokeLogout } from '../utils/authSession.js';
+import { getCsrfToken, getStoredToken, generateCsrfToken } from '../utils/jwt.js';
 
 export const BACKEND_BASE_URL = 'https://teclia-academia-2.onrender.com';
 const API_BASE_URL = `${BACKEND_BASE_URL}/api`;
@@ -13,11 +14,21 @@ const api = axios.create({
 
 const AUTH_ENDPOINTS = /\/auth\/(login|signup|forgot-password|reset-password)/;
 
-// Add JWT token and abort signal to requests
+// Add JWT token, CSRF token, and abort signal to requests
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('authToken');
+  const token = getStoredToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  let csrf = getCsrfToken();
+  if (!csrf) {
+    csrf = generateCsrfToken();
+  }
+  if (csrf && !config.url.includes('/auth/')) {
+    config.headers['X-CSRF-Token'] = csrf;
+  }
+  if (csrf && !config.url.includes('/auth/')) {
+    config.headers['X-CSRF-Token'] = csrf;
   }
   config.signal = getRequestSignal();
   return config;
@@ -75,6 +86,15 @@ export const authService = {
     api.patch(`/auth/students/${studentId}/plan`, { plan_tier: planTier }),
   deleteStudent: (studentId) =>
     api.delete(`/auth/students/${studentId}`),
+  updateStudentStatus: (studentId, status) =>
+    api.patch(`/admin/users/${studentId}/status`, { status }),
+};
+
+export const adminService = {
+  getDashboardStats: () =>
+    api.get('/admin/stats'),
+  deleteContent: (contentId) =>
+    api.delete(`/content/${contentId}`),
 };
 
 export const statsService = {
