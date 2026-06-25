@@ -3,6 +3,13 @@
  * These match the seeded users and are used for testing
  */
 
+export const normalUser = {
+  name: 'Test User',
+  email: 'test.user@teclia.dev',
+  password: 'TestUser1234!',
+  role: 'student'
+};
+
 export const adminUser = {
   name: 'Admin User',
   email: 'admin@teclia.dev',
@@ -28,6 +35,7 @@ export const studentUserTwo = {
  * Export all fixtures as an object for convenience
  */
 export default {
+  normalUser,
   adminUser,
   studentUser,
   studentUserTwo

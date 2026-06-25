@@ -1,9 +1,15 @@
 import rateLimit from 'express-rate-limit';
 
+// Disable rate limiting during tests
+const skipDuringTests = (req, _res) => {
+  return process.env.NODE_ENV === 'test';
+};
+
 const createLimiter = (options) =>
   rateLimit({
     windowMs: options.windowMs,
     max: options.max,
+    skip: skipDuringTests,
     standardHeaders: true,
     legacyHeaders: false,
     handler: (_req, res) => {

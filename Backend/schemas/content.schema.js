@@ -35,9 +35,12 @@ const bodyOrDescription = z
   }));
 
 export const createContent = z.object({
-  title: normalizeString('Title')
+  title: z
+    .string()
+    .min(1, { message: 'Title is required' })
     .min(3, { message: 'Title must be at least 3 characters long' })
-    .max(120, { message: 'Title cannot exceed 120 characters' }),
+    .max(120, { message: 'Title cannot exceed 120 characters' })
+    .transform((value) => value.trim()),
   type: contentType,
   ...bodyOrDescription.shape,
   tags: z.array(optionalTag).optional(),
@@ -45,9 +48,11 @@ export const createContent = z.object({
 
 export const updateContent = z
   .object({
-    title: normalizeString('Title')
+    title: z
+      .string()
       .min(3, { message: 'Title must be at least 3 characters long' })
       .max(120, { message: 'Title cannot exceed 120 characters' })
+      .transform((value) => value.trim())
       .optional(),
     type: contentType.optional(),
     body: z

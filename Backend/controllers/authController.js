@@ -127,23 +127,14 @@ export const signup = async (req, res) => {
       },
     });
 
-    saveDatabase();
-
-    const userId = insertResult[0].values[0][0];
-
-    const token = generateToken(userId, "student");
-    const refreshToken = generateRefreshToken(userId, "student");
-    res.json({
+    const token = generateToken(user.id, "student");
+    const refreshToken = generateRefreshToken(user.id, "student");
+    
+    res.status(201).json({
       message: "User created successfully",
       token,
       refreshToken,
-      user: {
-        id: userId,
-        email: normalizedEmail,
-        name,
-        role: "student",
-        avatar_url: null,
-      },
+      user: formatUserResponse(user),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -167,6 +158,10 @@ export const login = async (req, res) => {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
+    if (!user.passwordHash) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
     const passwordMatch = bcryptjs.compareSync(password, user.passwordHash);
 
     if (!passwordMatch) {
@@ -175,11 +170,12 @@ export const login = async (req, res) => {
 
     const token = generateToken(user.id, user.role);
     const refreshToken = generateRefreshToken(user.id, user.role);
-    res.json({
+    
+    res.status(200).json({
       message: "Login successful",
       token,
       refreshToken,
-      user: formatUser(user),
+      user: formatUserResponse(user),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -379,6 +375,7 @@ export const resetPassword = async (req, res) => {
 export const refresh = async (req, res) => {
   try {
     const { refreshToken } = req.body;
+    
     if (!refreshToken) {
       return res.status(400).json({ error: "Refresh token is required" });
     }
@@ -387,21 +384,52 @@ export const refresh = async (req, res) => {
     try {
       decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
     } catch (err) {
-      return res
-        .status(401)
-        .json({ error: "Invalid or expired refresh token" });
+      if (err.name === 'TokenExpiredError') {
+        return res.status(401).json({ 
+          error: "Refresh token expired", 
+          code: 'REFRESH_TOKEN_EXPIRED' 
+        });
+      }
+      if (err.name === 'JsonWebTokenError') {
+        return res.status(401).json({ 
+          error: "Invalid refresh token", 
+          code: 'INVALID_REFRESH_TOKEN' 
+        });
+      }
+      return res.status(401).json({ error: "Invalid or expired refresh token" });
     }
 
-    const token = generateToken(decoded.id, decoded.role);
-    const newRefreshToken = generateRefreshToken(decoded.id, decoded.role);
-    res.json({ token, refreshToken: newRefreshToken });
+    // Verify user still exists
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+    });
+
+    if (!user) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    const token = generateToken(user.id, user.role);
+    const newRefreshToken = generateRefreshToken(user.id, user.role);
+    
+    res.status(200).json({ 
+      message: "Token refreshed successfully",
+      token, 
+      refreshToken: newRefreshToken 
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
 export const logout = async (req, res) => {
-  res.json({ message: "Logout successful" });
+  try {
+    // Optional: Add logout timestamp to user record for audit purposes
+    res.status(200).json({ 
+      message: "Logout successful" 
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
 export const verifyRecoveryEmail = async (req, res) => {
