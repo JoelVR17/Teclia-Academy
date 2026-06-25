@@ -1,18 +1,7 @@
-import jwt from 'jsonwebtoken';
 import prisma from '../utils/prismaClient.js';
 import { canAccessPlan, PLAN_TIERS } from '../utils/plans.js';
 import { formatContent } from '../utils/serializers.js';
 import storage from '../storage/index.js';
-
-const parseOptionalUser = (req) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return null;
-  try {
-    return jwt.verify(token, process.env.JWT_SECRET);
-  } catch {
-    return null;
-  }
-};
 
 const getUserAccess = async (userId) => {
   const user = await prisma.user.findUnique({
@@ -55,8 +44,7 @@ export const getContent = async (req, res) => {
     });
 
     const allContent = rows.map(formatContent);
-    const tokenUser = parseOptionalUser(req);
-    const access = tokenUser ? await getUserAccess(tokenUser.id) : null;
+    const access = req.user ? await getUserAccess(req.user.id) : null;
     let content = filterContentForUser(allContent, access);
     content = await resolveContentUrls(content);
 
@@ -79,8 +67,7 @@ export const getContentById = async (req, res) => {
     }
 
     let content = formatContent(row);
-    const tokenUser = parseOptionalUser(req);
-    const access = tokenUser ? await getUserAccess(tokenUser.id) : null;
+    const access = req.user ? await getUserAccess(req.user.id) : null;
 
     if (!filterContentForUser([content], access).length) {
       return res.status(403).json({ error: 'No tienes acceso a este contenido con tu plan actual' });
@@ -115,12 +102,7 @@ export const uploadContent = async (req, res) => {
       return res.status(400).json({ error: 'Plan de contenido no válido' });
     }
 
-    const uploaderId = req.user?.id;
-
-    if (!uploaderId) {
-      return res.status(401).json({ error: 'Uploader not identified' });
-    }
-
+    const uploaderId = req.user.id;
     const freeFlag = selectedPlan === 'free' ? 1 : 0;
 
     const created = await prisma.content.create({

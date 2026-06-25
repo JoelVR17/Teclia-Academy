@@ -6,6 +6,14 @@ import { validatePassword } from "../utils/password.js";
 import { listNonAdminUsers } from "../utils/dbUsers.js";
 import { formatUser, formatUserWithCreatedAt } from "../utils/serializers.js";
 import storage from "../storage/index.js";
+import {
+  REFRESH_TOKEN_EXPIRED,
+  REFRESH_TOKEN_EXPIRED_MESSAGE,
+  INVALID_REFRESH_TOKEN,
+  INVALID_REFRESH_TOKEN_MESSAGE,
+  USER_NOT_FOUND,
+  USER_NOT_FOUND_MESSAGE,
+} from "../constants/authErrors.js";
 
 const normalizeEmail = (email) => email.trim().toLowerCase();
 
@@ -109,7 +117,7 @@ export const signup = async (req, res) => {
     const normalizedEmail = normalizeEmail(email);
 
     const existingUser = await prisma.user.findFirst({
-      where: { email: { equals: normalizedEmail, mode: "insensitive" } },
+      where: { email: { equals: normalizedEmail } },
     });
 
     if (existingUser) {
@@ -151,7 +159,7 @@ export const login = async (req, res) => {
 
     const normalizedEmail = normalizeEmail(email);
     const user = await prisma.user.findFirst({
-      where: { email: { equals: normalizedEmail, mode: "insensitive" } },
+      where: { email: { equals: normalizedEmail } },
     });
 
     if (!user) {
@@ -291,7 +299,7 @@ export const forgotPassword = async (req, res) => {
 
     const normalizedEmail = normalizeEmail(email);
     const user = await prisma.user.findFirst({
-      where: { email: { equals: normalizedEmail, mode: "insensitive" } },
+      where: { email: { equals: normalizedEmail } },
     });
 
     if (!user) {
@@ -336,7 +344,7 @@ export const resetPassword = async (req, res) => {
 
     const normalizedEmail = normalizeEmail(email);
     const user = await prisma.user.findFirst({
-      where: { email: { equals: normalizedEmail, mode: "insensitive" } },
+      where: { email: { equals: normalizedEmail } },
     });
 
     if (!user) {
@@ -386,17 +394,17 @@ export const refresh = async (req, res) => {
     } catch (err) {
       if (err.name === 'TokenExpiredError') {
         return res.status(401).json({ 
-          error: "Refresh token expired", 
-          code: 'REFRESH_TOKEN_EXPIRED' 
+          error: REFRESH_TOKEN_EXPIRED_MESSAGE, 
+          code: REFRESH_TOKEN_EXPIRED,
         });
       }
       if (err.name === 'JsonWebTokenError') {
         return res.status(401).json({ 
-          error: "Invalid refresh token", 
-          code: 'INVALID_REFRESH_TOKEN' 
+          error: INVALID_REFRESH_TOKEN_MESSAGE, 
+          code: INVALID_REFRESH_TOKEN,
         });
       }
-      return res.status(401).json({ error: "Invalid or expired refresh token" });
+      return res.status(401).json({ error: INVALID_REFRESH_TOKEN_MESSAGE, code: INVALID_REFRESH_TOKEN });
     }
 
     // Verify user still exists
@@ -405,7 +413,7 @@ export const refresh = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(401).json({ error: "User not found" });
+      return res.status(401).json({ error: USER_NOT_FOUND_MESSAGE, code: USER_NOT_FOUND });
     }
 
     const token = generateToken(user.id, user.role);
@@ -442,7 +450,7 @@ export const verifyRecoveryEmail = async (req, res) => {
 
     const normalizedEmail = normalizeEmail(email);
     const user = await prisma.user.findFirst({
-      where: { email: { equals: normalizedEmail, mode: "insensitive" } },
+      where: { email: { equals: normalizedEmail } },
     });
 
     if (!user) {

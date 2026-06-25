@@ -28,7 +28,7 @@ export const setupTestDb = () => {
       await prisma.user.deleteMany({
         where: {
           NOT: {
-            email: { equals: ADMIN_EMAIL, mode: 'insensitive' },
+            email: { equals: ADMIN_EMAIL },
           },
         },
       });
@@ -46,7 +46,7 @@ export const setupTestDb = () => {
 
 export const promoteUserToAdmin = async (email) => {
   return prisma.user.updateMany({
-    where: { email: { equals: email, mode: 'insensitive' } },
+    where: { email: { equals: email } },
     data: { role: 'admin' },
   });
 };

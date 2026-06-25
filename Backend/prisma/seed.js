@@ -43,7 +43,7 @@ const migrateAdminAccount = async () => {
   });
 
   const legacyAdmin = await prisma.user.findFirst({
-    where: { email: { equals: LEGACY_ADMIN_EMAIL, mode: "insensitive" } },
+    where: { email: { equals: LEGACY_ADMIN_EMAIL } },
   });
 
   if (legacyAdmin) {
@@ -67,7 +67,7 @@ const removeSeededStudents = async () => {
   await prisma.user.deleteMany({
     where: {
       OR: legacyEmails.map((email) => ({
-        email: { equals: email, mode: "insensitive" },
+        email: { equals: email },
       })),
     },
   });
@@ -81,7 +81,7 @@ const purgeLegacyNonAdminUsers = async () => {
   if (flag) return;
 
   const admin = await prisma.user.findFirst({
-    where: { email: { equals: ADMIN_EMAIL, mode: "insensitive" } },
+    where: { email: { equals: ADMIN_EMAIL } },
   });
 
   if (admin) {
