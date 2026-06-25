@@ -1,0 +1,55 @@
+er(t,nl(r,!1))}};gt(ke,"InvalidDatasourceError");function il(e){let t={clientVersion:e.clientVersion},r;try{r=new URL(e.accelerateUrl)}catch(l){let u=l.message;throw new ke(`Error validating \`accelerateUrl\`, the URL cannot be parsed, reas
+---
+ientVersion:e.clientVersion},r;try{r=new URL(e.accelerateUrl)}catch(l){let u=l.message;throw new ke(`Error validating \`accelerateUrl\`, the URL cannot be parsed, reason: ${u}`,t)}let{protocol:n,searchParams:i}=r;if(n!=="prisma:"&&n!==zt)th
+---
+t be parsed, reason: ${u}`,t)}let{protocol:n,searchParams:i}=r;if(n!=="prisma:"&&n!==zt)throw new ke("Error validating `accelerateUrl`: the URL must start with the protocol `prisma://` or `prisma+postgres://`",t);let o=i.get("api_key");if(o
+---
+ `prisma://` or `prisma+postgres://`",t);let o=i.get("api_key");if(o===null||o.length<1)throw new ke("Error validating `accelerateUrl`: the URL must contain a valid API key",t);let s=tn(r)?"http:":"https:";process.env.TEST_CLIENT_ENGINE_REM
+---
+s.#n=t.logEmitter,this.#i=t.tracingHelper,this.#o=t.sqlCommenters;let{url:r,apiKey:n}=il({clientVersion:t.clientVersion,accelerateUrl:t.accelerateUrl});this.#r=new li(r),this.#t=new Br({apiKey:n,engineHash:t.clientVersion,logLevel:t.logLeve
+---
+r,this.#i=t.tracingHelper,this.#o=t.sqlCommenters;let{url:r,apiKey:n}=il({clientVersion:t.clientVersion,accelerateUrl:t.accelerateUrl});this.#r=new li(r),this.#t=new Br({apiKey:n,engineHash:t.clientVersion,logLevel:t.logLevel,logQueries:t.l
+---
+type:"disconnected"};#r;#n;#i;#o;config;datamodel;logEmitter;logQueries;logLevel;tracingHelper;#s;constructor(t,r){if(t.accelerateUrl!==void 0)this.#n={remote:!0,accelerateUrl:t.accelerateUrl};else if(t.adapter)this.#n={remote:!1,driverAdap
+---
+tamodel;logEmitter;logQueries;logLevel;tracingHelper;#s;constructor(t,r){if(t.accelerateUrl!==void 0)this.#n={remote:!0,accelerateUrl:t.accelerateUrl};else if(t.adapter)this.#n={remote:!1,driverAdapterFactory:t.adapter},ce("Using driver ada
+---
+er;logQueries;logLevel;tracingHelper;#s;constructor(t,r){if(t.accelerateUrl!==void 0)this.#n={remote:!0,accelerateUrl:t.accelerateUrl};else if(t.adapter)this.#n={remote:!1,driverAdapterFactory:t.adapter},ce("Using driver adapter: %O",t.adap
+---
+ await this.#t.promise,await this.#a()}}async#l(){return this.#n.remote?new Qr({clientVersion:this.config.clientVersion,accelerateUrl:this.#n.accelerateUrl,logEmitter:this.logEmitter,logLevel:this.logLevel,logQueries:this.logQueries,tracing
+---
+,await this.#a()}}async#l(){return this.#n.remote?new Qr({clientVersion:this.config.clientVersion,accelerateUrl:this.#n.accelerateUrl,logEmitter:this.logEmitter,logLevel:this.logLevel,logQueries:this.logQueries,tracingHelper:this.tracingHel
+---
+ismaClientConstructorValidationError"}};gt(S,"PrismaClientConstructorValidationError");var _l=["errorFormat","adapter","accelerateUrl","log","transactionOptions","omit","comments","queryPlanCacheMaxSize","__internal"],$l=["pretty","colorles
+---
+anCacheMaxSize","__internal"],$l=["pretty","colorless","minimal"],Ll=["info","query","warn","error"],Cm={adapter:()=>{},accelerateUrl:e=>{if(e!==void 0){if(typeof e!="string")throw new S(`Invalid value ${JSON.stringify(e)} for "accelerateUr
+---
+pter:()=>{},accelerateUrl:e=>{if(e!==void 0){if(typeof e!="string")throw new S(`Invalid value ${JSON.stringify(e)} for "accelerateUrl" provided to PrismaClient constructor.`);if(e.trim().length===0)throw new S('"accelerateUrl" provided to P
+---
+e ${JSON.stringify(e)} for "accelerateUrl" provided to PrismaClient constructor.`);if(e.trim().length===0)throw new S('"accelerateUrl" provided to PrismaClient constructor must be a non-empty string.')}},errorFormat:e=>{if(e){if(typeof e!="
+---
+ringify(r)} for "__internal" provided to PrismaClient constructor.${n}`)}}};function Rm(e){let t=e.adapter!==void 0,r=e.accelerateUrl!==void 0;if(t&&r)throw new S('The "adapter" and "accelerateUrl" options are mutually exclusive. Please pro
+---
+or.${n}`)}}};function Rm(e){let t=e.adapter!==void 0,r=e.accelerateUrl!==void 0;if(t&&r)throw new S('The "adapter" and "accelerateUrl" options are mutually exclusive. Please provide only one of them.');if(!t&&!r)throw new S('Using engine ty
+---
+ive. Please provide only one of them.');if(!t&&!r)throw new S('Using engine type "client" requires either "adapter" or "accelerateUrl" to be provided to PrismaClient constructor.')}function jl(e,t){for(let[r,n]of Object.entries(e)){if(!_l.i
+---
+,timeout:s.transactionOptions?.timeout??5e3,isolationLevel:s.transactionOptions?.isolationLevel},logEmitter:i,adapter:o,accelerateUrl:s.accelerateUrl,sqlCommenters:s.comments,parameterizationSchema:e.parameterizationSchema,runtimeDataModel:
+---
+actionOptions?.timeout??5e3,isolationLevel:s.transactionOptions?.isolationLevel},logEmitter:i,adapter:o,accelerateUrl:s.accelerateUrl,sqlCommenters:s.comments,parameterizationSchema:e.parameterizationSchema,runtimeDataModel:e.runtimeDataMod
+---
+neConfig=Object.create(this._engineConfig),this._accelerateEngineConfig.accelerateUtils={resolveDatasourceUrl:()=>{if(s.accelerateUrl)return s.accelerateUrl;throw new b.PrismaClientInitializationError(`\`accelerateUrl\` is required when usi
+---
+this._engineConfig),this._accelerateEngineConfig.accelerateUtils={resolveDatasourceUrl:()=>{if(s.accelerateUrl)return s.accelerateUrl;throw new b.PrismaClientInitializationError(`\`accelerateUrl\` is required when using \`@prisma/extension-
+---
+ils={resolveDatasourceUrl:()=>{if(s.accelerateUrl)return s.accelerateUrl;throw new b.PrismaClientInitializationError(`\`accelerateUrl\` is required when using \`@prisma/extension-accelerate\`:
+
+new PrismaClient({
+  accelerateUrl: "prisma://
+---
+ntInitializationError(`\`accelerateUrl\` is required when using \`@prisma/extension-accelerate\`:
+
+new PrismaClient({
+  accelerateUrl: "prisma://...",
+}).$extends(withAccelerate())
+`,e.clientVersion)}},rt("clientVersion",e.clientVersion),th
