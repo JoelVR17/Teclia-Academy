@@ -5,19 +5,7 @@ import { authService } from '../../services/api.js';
 import { resolveAvatar, storeAvatar } from '../../utils/avatar.js';
 import { validatePassword, PASSWORD_HINT } from '../../utils/password.js';
 import { planLabel } from '../../utils/plans.js';
-
-const pciSafeCard = (value) => value.replace(/[^0-9]/g, '');
-const isValidLuhn = (cardNumber) => {
-  const digits = cardNumber.split('').reverse().map(Number);
-  const sum = digits.reduce((acc, digit, index) => {
-    if (index % 2 === 1) {
-      const doubled = digit * 2;
-      return acc + (doubled > 9 ? doubled - 9 : doubled);
-    }
-    return acc + digit;
-  }, 0);
-  return sum % 10 === 0;
-};
+import { CheckoutFlow } from '../../components/payments/CheckoutFlow.jsx';
 
 const vipPlans = [
   {
@@ -81,8 +69,7 @@ export const ProfilePage = () => {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [showPassword, setShowPassword] = useState({ current: false, new: false, confirm: false });
   const [activePlan, setActivePlan] = useState(null);
-  const [paymentInfo, setPaymentInfo] = useState({ cardNumber: '', expiry: '', cvc: '' });
-  const [paymentStatus, setPaymentStatus] = useState(null);
+
 
   useEffect(() => {
     setName(user?.name || '');
@@ -161,22 +148,8 @@ export const ProfilePage = () => {
     }
   };
 
-  const handlePaymentSubmit = (e) => {
-    e.preventDefault();
-    const number = pciSafeCard(paymentInfo.cardNumber);
-    if (!isValidLuhn(number)) {
-      setPaymentStatus({ type: 'error', message: 'Número de tarjeta inválido. Revisa el número e inténtalo de nuevo.' });
-      return;
-    }
-    setPaymentStatus({ type: 'success', message: 'Tarjeta válida. Próximamente integraremos pasarela de pago.' });
-  };
 
-  const handleUpgrade = () => {
-    navigate('/');
-    setTimeout(() => {
-      window.location.hash = 'premium';
-    }, 100);
-  };
+  
 
   const roleLabel = user?.role === 'admin'
     ? '👑 Instructor'
@@ -370,67 +343,12 @@ export const ProfilePage = () => {
                   </div>
                 ))}
               </div>
-              <div className="subscription-info-bottom">
-                {user?.role !== 'admin' && user?.role !== 'premium' ? (
-                  <button onClick={handleUpgrade} className="button button-primary">
-                    Mejorar a Premium
-                  </button>
-                ) : (
-                  <p className="sub-description">Gracias por tu suscripción. Disfruta de todos los beneficios de tu plan.</p>
-                )}
-              </div>
             </div>
 
             <div className="profile-section">
-              <h2>Método de pago</h2>
+              <h2>Actualizar plan</h2>
               <div className="profile-card">
-                <form onSubmit={handlePaymentSubmit} className="payment-form">
-                  <div className="form-group">
-                    <label htmlFor="cardNumber">Número de tarjeta</label>
-                    <input
-                      id="cardNumber"
-                      type="text"
-                      inputMode="numeric"
-                      value={paymentInfo.cardNumber}
-                      onChange={(e) => setPaymentInfo({ ...paymentInfo, cardNumber: e.target.value })}
-                      placeholder="0000 0000 0000 0000"
-                      required
-                    />
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group half-width">
-                      <label htmlFor="expiry">Fecha expiración</label>
-                      <input
-                        id="expiry"
-                        type="text"
-                        value={paymentInfo.expiry}
-                        onChange={(e) => setPaymentInfo({ ...paymentInfo, expiry: e.target.value })}
-                        placeholder="MM/AA"
-                        required
-                      />
-                    </div>
-                    <div className="form-group half-width">
-                      <label htmlFor="cvc">CVC</label>
-                      <input
-                        id="cvc"
-                        type="text"
-                        inputMode="numeric"
-                        value={paymentInfo.cvc}
-                        onChange={(e) => setPaymentInfo({ ...paymentInfo, cvc: e.target.value })}
-                        placeholder="123"
-                        required
-                      />
-                    </div>
-                  </div>
-                  {paymentStatus && (
-                    <div className={paymentStatus.type === 'success' ? 'success-message' : 'error-message'}>
-                      {paymentStatus.message}
-                    </div>
-                  )}
-                  <button type="submit" className="button button-primary">
-                    Validar tarjeta
-                  </button>
-                </form>
+                <CheckoutFlow initialPlan={user?.plan_tier} />
               </div>
             </div>
           </div>

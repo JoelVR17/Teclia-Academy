@@ -6,7 +6,7 @@ import { getSafeRedirect } from '../../utils/safeRedirect.js';
 export const LoginPage = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const redirectParam = searchParams.get('redirect');
+  const redirectParam = searchParams.get('redirect') || searchParams.get('returnTo');
   const reason = searchParams.get('reason');
   const safeRedirect = getSafeRedirect(redirectParam);
 
