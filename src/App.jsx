@@ -10,8 +10,22 @@ import { useInactivityTimer } from './hooks/useInactivityTimer.js';
 import { AppRoutes } from './routes/index.jsx';
 import { useAuth } from './hooks/useAuth.js';
 
-const AppShell = () => {
+const AppProviders = ({ children }) => {
   const { toast, showSessionExpiredToast, dismissToast } = useSessionToast();
+  return (
+    <ErrorBoundary>
+      <AuthProvider onSessionExpiredToast={showSessionExpiredToast}>
+        <ContentProvider>
+          <ToastProvider>
+            {children({ toast, dismissToast })}
+          </ToastProvider>
+        </ContentProvider>
+      </AuthProvider>
+    </ErrorBoundary>
+  );
+};
+
+const AppContent = ({ toast, dismissToast }) => {
   const { user, logout } = useAuth();
 
   const handleTimeout = () => {
@@ -21,34 +35,30 @@ const AppShell = () => {
   const { showWarning, dismissWarning } = useInactivityTimer(handleTimeout, !!user);
 
   return (
-    <ErrorBoundary>
-      <AuthProvider onSessionExpiredToast={showSessionExpiredToast}>
-        <ContentProvider>
-          <ToastProvider>
-            <Navbar />
-            <SessionToast
-              message={toast.message}
-              visible={toast.visible}
-              onDismiss={dismissToast}
-            />
-            <AppRoutes />
-            {showWarning && (
-              <InactivityModal
-                onDismiss={dismissWarning}
-                onLogout={() => logout({ redirectTo: '/auth/login' })}
-              />
-            )}
-          </ToastProvider>
-        </ContentProvider>
-      </AuthProvider>
-    </ErrorBoundary>
+    <>
+      <Navbar />
+      <SessionToast
+        message={toast.message}
+        visible={toast.visible}
+        onDismiss={dismissToast}
+      />
+      <AppRoutes />
+      {showWarning && (
+        <InactivityModal
+          onDismiss={dismissWarning}
+          onLogout={() => logout({ redirectTo: '/auth/login' })}
+        />
+      )}
+    </>
   );
 };
 
 function App() {
   return (
     <Router>
-      <AppShell />
+      <AppProviders>
+        {({ toast, dismissToast }) => <AppContent toast={toast} dismissToast={dismissToast} />}
+      </AppProviders>
     </Router>
   );
 }

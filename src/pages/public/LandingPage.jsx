@@ -1,3 +1,5 @@
+import { CheckoutFlow } from '../../components/payments/CheckoutFlow.jsx';
+import { CheckoutModal } from '../../components/payments/CheckoutModal.jsx';
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { statsService } from '../../services/api.js';
 
@@ -83,12 +85,12 @@ const scaleTypes = [
 function LandingPage() {
   const [selectedRoot, setSelectedRoot] = useState('C');
   const [selectedScaleType, setSelectedScaleType] = useState(scaleTypes[0]);
-  const [activePlan, setActivePlan] = useState(null);
-  const [selectedPlan, setSelectedPlan] = useState(null);
-  const [paymentInfo, setPaymentInfo] = useState({ cardNumber: '', expiry: '', cvc: '' });
-  const [paymentStatus, setPaymentStatus] = useState(null);
   const [sustainMode, setSustainMode] = useState(false);
   const [sustainActive, setSustainActive] = useState(false);
+  const [activePlan, setActivePlan] = useState(null);
+  const [checkoutPlan, setCheckoutPlan] = useState(null);
+  const checkoutBuying = useRef(false);
+  const closeCheckout = () => { setCheckoutPlan(null); checkoutBuying.current = false; };
   const audioContextRef = useRef(null);
   const audioStartedRef = useRef(false);
   const sustainHoldRef = useRef(false);
@@ -97,7 +99,15 @@ function LandingPage() {
     if (sessionStorage.getItem('tecliaVisitCounted')) return;
     statsService.recordVisit()
       .then(() => sessionStorage.setItem('tecliaVisitCounted', '1'))
-      .catch(() => {});
+      .catch(() => { });
+  }, []);
+
+  // Resume checkout after login redirect
+  useEffect(() => {
+    const savedPlan = sessionStorage.getItem('checkout_plan');
+    if (savedPlan && !checkoutPlan) {
+      setCheckoutPlan(savedPlan);
+    }
   }, []);
 
   const selectedScaleNotes = useMemo(() => {
@@ -275,7 +285,7 @@ function LandingPage() {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (!AudioContext) return;
     const audioCtx = audioContextRef.current || new AudioContext();
-    if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+    if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => { });
     audioContextRef.current = audioCtx;
     const now = audioCtx.currentTime;
     const frequency = noteFrequencies[noteLabel] || 440;
@@ -468,12 +478,9 @@ function LandingPage() {
                     type="button"
                     className="button button-primary plan-buy-button"
                     onClick={() => {
-                      setSelectedPlan(plan.label);
-                      setActivePlan(plan.label);
-                      setPaymentStatus(null);
-                      setTimeout(() => {
-                        document.getElementById('payment-section')?.scrollIntoView({ behavior: 'smooth' });
-                      }, 150);
+                      if (checkoutBuying.current) return;
+                      checkoutBuying.current = true;
+                      setCheckoutPlan(plan.label);
                     }}
                   >
                     Comprar {plan.label}
@@ -495,79 +502,6 @@ function LandingPage() {
             ))}
           </div>
 
-          <div className="payment-section" id="payment-section">
-            <div className="payment-panel">
-              <div className="payment-panel-header">
-                <h2>Compra tu plan</h2>
-                <p>Selecciona un plan y completa los datos de la tarjeta para avanzar. Esto te ayuda a ver el flujo de pago con claridad.</p>
-              </div>
-
-              {selectedPlan ? (
-                <>
-                  <div className="selected-plan-card">Plan seleccionado: <strong>{selectedPlan}</strong></div>
-                  <form className="payment-form" onSubmit={(e) => {
-                    e.preventDefault();
-                    const raw = paymentInfo.cardNumber.replace(/\s+/g, '');
-                    if (!/^[0-9]{16}$/.test(raw)) {
-                      setPaymentStatus({ type: 'error', message: 'Ingresa un número de tarjeta válido de 16 dígitos.' });
-                      return;
-                    }
-                    if (!/^[0-9]{2}\/([0-9]{2})$/.test(paymentInfo.expiry)) {
-                      setPaymentStatus({ type: 'error', message: 'Ingresa fecha de expiración en formato MM/AA.' });
-                      return;
-                    }
-                    if (!/^[0-9]{3,4}$/.test(paymentInfo.cvc)) {
-                      setPaymentStatus({ type: 'error', message: 'Ingresa un CVC válido de 3 o 4 dígitos.' });
-                      return;
-                    }
-                    setPaymentStatus({ type: 'success', message: `Pago simulado recibido para ${selectedPlan}. Gracias por tu compra.` });
-                  }}>
-                    <div className="payment-row">
-                      <label>
-                        Número de tarjeta
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="0000 0000 0000 0000"
-                          value={paymentInfo.cardNumber}
-                          onChange={(e) => setPaymentInfo((prev) => ({ ...prev, cardNumber: e.target.value }))}
-                          required
-                        />
-                      </label>
-                      <label>
-                        Expiración
-                        <input
-                          type="text"
-                          placeholder="MM/AA"
-                          value={paymentInfo.expiry}
-                          onChange={(e) => setPaymentInfo((prev) => ({ ...prev, expiry: e.target.value }))}
-                          required
-                        />
-                      </label>
-                      <label>
-                        CVC
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="123"
-                          value={paymentInfo.cvc}
-                          onChange={(e) => setPaymentInfo((prev) => ({ ...prev, cvc: e.target.value }))}
-                          required
-                        />
-                      </label>
-                    </div>
-                    <button type="submit" className="button button-primary">Pagar ahora</button>
-                    {paymentStatus && (
-                      <div className={`payment-status ${paymentStatus.type}`}>{paymentStatus.message}</div>
-                    )}
-                    <p className="payment-note">Pago simulado. La pasarela real se integrará en la siguiente fase.</p>
-                  </form>
-                </>
-              ) : (
-                <p className="payment-hint">Haz clic en "Comprar" en alguno de los planes para ver el formulario de pago.</p>
-              )}
-            </div>
-          </div>
         </section>
 
         <section className="section-surface section-explore" id="explora">
@@ -689,6 +623,15 @@ function LandingPage() {
           <a href="#contacto">Contacto</a>
         </div>
       </footer>
+      {checkoutPlan && (
+        <CheckoutModal onClose={closeCheckout}>
+          <h3 style={{ margin: '0 0 0.75rem' }}>Compra tu plan</h3>
+          <p style={{ margin: '0 0 1.25rem', color: '#b0b0b0', fontSize: '0.95rem' }}>
+            Completando la compra de <strong>{checkoutPlan}</strong>
+          </p>
+          <CheckoutFlow initialPlan={checkoutPlan} onComplete={closeCheckout} />
+        </CheckoutModal>
+      )}
     </div>
   );
 }
