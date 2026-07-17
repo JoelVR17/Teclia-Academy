@@ -15,6 +15,8 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "prisma db seed",
     "prisma:studio": "prisma studio",
+    "migrate:plan-tiers": "node scripts/migrations/migrate-premium-plan-tier.js",
+    "migrate:plan-tiers:dry-run": "node scripts/migrations/migrate-premium-plan-tier.js --dry-run",
     "postinstall": "prisma generate"
   },
   "keywords": [
