@@ -1,4 +1,4 @@
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
 import { Logo } from './Logo.jsx';
 import { resolveAvatar } from '../../utils/avatar.js';
@@ -7,7 +7,6 @@ import { useEffect, useState } from 'react';
 
 export const Navbar = () => {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -21,8 +20,7 @@ export const Navbar = () => {
   }, [location.pathname]);
 
   const handleLogout = () => {
-    logout();
-    navigate('/');
+    logout({ redirectTo: '/auth/login' });
   };
 
   const closeMobile = () => setMobileOpen(false);

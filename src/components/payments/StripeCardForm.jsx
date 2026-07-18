@@ -45,7 +45,7 @@ const getStripeErrorMessage = (error) => {
     || 'No pudimos procesar tu método de pago. Revisa los datos e inténtalo de nuevo.';
 };
 
-function StripeCardFormContent({ submitLabel, successMessage }) {
+function StripeCardFormContent({ submitLabel, successMessage, onSuccess }) {
   const stripe = useStripe();
   const elements = useElements();
   const [status, setStatus] = useState(null);
@@ -80,6 +80,7 @@ function StripeCardFormContent({ submitLabel, successMessage }) {
       await paymentsService.submitPaymentMethod(paymentMethod.id);
       card.clear();
       setStatus({ type: 'success', message: successMessage });
+      onSuccess?.(paymentMethod.id);
     } catch (error) {
       setStatus({ type: 'error', message: getStripeErrorMessage(error) });
     } finally {
@@ -116,6 +117,7 @@ function StripeCardFormContent({ submitLabel, successMessage }) {
 export default function StripeCardForm({
   submitLabel = 'Guardar método de pago',
   successMessage = 'Método de pago guardado correctamente.',
+  onSuccess,
 }) {
   if (!paymentsAvailable) {
     return (
@@ -130,7 +132,7 @@ export default function StripeCardForm({
 
   return (
     <Elements stripe={stripePromise}>
-      <StripeCardFormContent submitLabel={submitLabel} successMessage={successMessage} />
+      <StripeCardFormContent submitLabel={submitLabel} successMessage={successMessage} onSuccess={onSuccess} />
     </Elements>
   );
 }

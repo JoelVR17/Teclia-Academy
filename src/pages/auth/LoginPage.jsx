@@ -1,9 +1,15 @@
 import { useState } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
+import { getSafeRedirect } from '../../utils/safeRedirect.js';
 
 export const LoginPage = () => {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const redirectParam = searchParams.get('redirect') || searchParams.get('returnTo');
+  const reason = searchParams.get('reason');
+  const safeRedirect = getSafeRedirect(redirectParam);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -31,7 +37,7 @@ export const LoginPage = () => {
     try {
       await login(email, password);
       sessionStorage.removeItem('recoveryEmail');
-      navigate('/');
+      navigate(safeRedirect || '/dashboard');
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');
     } finally {
@@ -45,6 +51,12 @@ export const LoginPage = () => {
         <div className="auth-card">
           <h1>Inicia sesión</h1>
           <p className="auth-subtitle">Bienvenido de vuelta a Teclia</p>
+
+          {reason === 'expired' && (
+            <div className="error-message">
+              Fuiste desconectado porque tu sesión expiró.
+            </div>
+          )}
 
           {error && <div className="error-message">{error}</div>}
 

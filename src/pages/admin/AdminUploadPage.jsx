@@ -1,8 +1,7 @@
 import { UploadForm } from '../../components/content/UploadForm.jsx';
 import { ContentGrid } from '../../components/content/ContentGrid.jsx';
 import { useContent } from '../../context/ContentContext.jsx';
-import axios from 'axios';
-import { BACKEND_BASE_URL } from '../../services/api.js';
+import { adminService } from '../../services/api.js';
 
 export const AdminUploadPage = () => {
   const { content, removeContent } = useContent();
@@ -10,15 +9,7 @@ export const AdminUploadPage = () => {
   const handleDelete = async (id) => {
     if (window.confirm('¿Estás seguro de que deseas eliminar este contenido?')) {
       try {
-        const token = localStorage.getItem('authToken');
-        await axios.delete(
-          `${BACKEND_BASE_URL}/api/content/${id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          }
-        );
+        await adminService.deleteContent(id);
         removeContent(id);
       } catch (err) {
         alert('Error al eliminar contenido: ' + err.response?.data?.error);

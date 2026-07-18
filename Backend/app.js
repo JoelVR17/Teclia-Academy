@@ -1,8 +1,10 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import 'dotenv/config';
+import { globalLimiter } from './middleware/rateLimiter.js';
 import authRoutes from './routes/auth.js';
 import contentRoutes from './routes/content.js';
 import statsRoutes from './routes/stats.js';
@@ -11,6 +13,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+app.set('trust proxy', 1);
+app.use(helmet());
+app.use(globalLimiter);
 
 // Ensure a JWT secret exists for tests/development if not provided
 if (!process.env.JWT_SECRET) {
