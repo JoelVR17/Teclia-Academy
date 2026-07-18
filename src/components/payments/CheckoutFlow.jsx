@@ -109,7 +109,7 @@ export const CheckoutFlow = ({ initialPlan, onComplete, renderPaymentForm }) => 
   }
 
   // Step 3: payment_method (tokenized securely by Stripe Elements)
-  if (step === 'payment_method') {
+  if (step === 'payment_method' && planData) {
     const handlePaymentSuccess = () => {
       sessionStorage.removeItem(STORAGE_KEY);
       setTimeout(() => onComplete?.(), 1200);

@@ -100,11 +100,11 @@ VITE_PAYMENTS_ENABLED=true
 
 Restart `npm run dev` after changing either variable because Vite reads them when the app starts.
 
-`VITE_PAYMENTS_ENABLED=true` activates the Stripe form. Set it to `false`, remove it, or omit `VITE_STRIPE_PUBLISHABLE_KEY` to show the safe **Pagos no disponibles** fallback. `VITE_PAYMENTS_ENABLED` is the Vite-exposed frontend equivalent of the `PAYMENTS_ENABLED` feature flag.
+`VITE_PAYMENTS_ENABLED=true` activates the Stripe form and allows the frontend to tokenize test cards with Stripe. It does not enable an end-to-end local checkout because the required backend route is not implemented yet. Set it to `false`, remove it, or omit `VITE_STRIPE_PUBLISHABLE_KEY` to show the safe **Pagos no disponibles** fallback. `VITE_PAYMENTS_ENABLED` is the Vite-exposed frontend equivalent of the `PAYMENTS_ENABLED` feature flag.
 
 ### Backend contract
 
-After Stripe tokenizes the card, the frontend calls `POST /api/payments/payment-method` with this exact JSON body:
+After Stripe tokenizes the card successfully, the frontend attempts to call `POST /api/payments/payment-method` with this exact JSON body:
 
 ```json
 {
@@ -112,7 +112,9 @@ After Stripe tokenizes the card, the frontend calls `POST /api/payments/payment-
 }
 ```
 
-The request must never contain a card number, CVC, or expiration date. This repository does not implement the server-side charge; the backend endpoint must receive the ID and perform any future Payment Intent or subscription work server-side.
+> ⚠️ **Nota:** el endpoint `POST /api/payments/payment-method` aún no está implementado en el backend de este repositorio. Hasta que se agregue, la tokenización con Stripe funcionará pero el envío del `paymentMethodId` al backend devolverá `404`.
+
+The request must never contain a card number, CVC, or expiration date. A future backend implementation must receive only this ID and perform any Payment Intent or subscription work server-side. Until that route exists, the complete checkout flow is unavailable in local development.
 
 ### Stripe test cards
 
