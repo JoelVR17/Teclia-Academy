@@ -72,4 +72,9 @@ export const contentService = {
     api.get('/content/free'),
 };
 
+export const paymentsService = {
+  submitPaymentMethod: (paymentMethodId) =>
+    api.post('/payments/payment-method', { paymentMethodId }),
+};
+
 export default api;

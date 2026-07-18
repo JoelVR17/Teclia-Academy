@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { statsService } from '../../services/api.js';
+import StripeCardForm from '../../components/payments/StripeCardForm.jsx';
 
 const navigation = [
   { label: 'Inicio', href: '#inicio' },
@@ -85,8 +86,6 @@ function LandingPage() {
   const [selectedScaleType, setSelectedScaleType] = useState(scaleTypes[0]);
   const [activePlan, setActivePlan] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState(null);
-  const [paymentInfo, setPaymentInfo] = useState({ cardNumber: '', expiry: '', cvc: '' });
-  const [paymentStatus, setPaymentStatus] = useState(null);
   const [sustainMode, setSustainMode] = useState(false);
   const [sustainActive, setSustainActive] = useState(false);
   const audioContextRef = useRef(null);
@@ -470,7 +469,6 @@ function LandingPage() {
                     onClick={() => {
                       setSelectedPlan(plan.label);
                       setActivePlan(plan.label);
-                      setPaymentStatus(null);
                       setTimeout(() => {
                         document.getElementById('payment-section')?.scrollIntoView({ behavior: 'smooth' });
                       }, 150);
@@ -505,63 +503,10 @@ function LandingPage() {
               {selectedPlan ? (
                 <>
                   <div className="selected-plan-card">Plan seleccionado: <strong>{selectedPlan}</strong></div>
-                  <form className="payment-form" onSubmit={(e) => {
-                    e.preventDefault();
-                    const raw = paymentInfo.cardNumber.replace(/\s+/g, '');
-                    if (!/^[0-9]{16}$/.test(raw)) {
-                      setPaymentStatus({ type: 'error', message: 'Ingresa un número de tarjeta válido de 16 dígitos.' });
-                      return;
-                    }
-                    if (!/^[0-9]{2}\/([0-9]{2})$/.test(paymentInfo.expiry)) {
-                      setPaymentStatus({ type: 'error', message: 'Ingresa fecha de expiración en formato MM/AA.' });
-                      return;
-                    }
-                    if (!/^[0-9]{3,4}$/.test(paymentInfo.cvc)) {
-                      setPaymentStatus({ type: 'error', message: 'Ingresa un CVC válido de 3 o 4 dígitos.' });
-                      return;
-                    }
-                    setPaymentStatus({ type: 'success', message: `Pago simulado recibido para ${selectedPlan}. Gracias por tu compra.` });
-                  }}>
-                    <div className="payment-row">
-                      <label>
-                        Número de tarjeta
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="0000 0000 0000 0000"
-                          value={paymentInfo.cardNumber}
-                          onChange={(e) => setPaymentInfo((prev) => ({ ...prev, cardNumber: e.target.value }))}
-                          required
-                        />
-                      </label>
-                      <label>
-                        Expiración
-                        <input
-                          type="text"
-                          placeholder="MM/AA"
-                          value={paymentInfo.expiry}
-                          onChange={(e) => setPaymentInfo((prev) => ({ ...prev, expiry: e.target.value }))}
-                          required
-                        />
-                      </label>
-                      <label>
-                        CVC
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="123"
-                          value={paymentInfo.cvc}
-                          onChange={(e) => setPaymentInfo((prev) => ({ ...prev, cvc: e.target.value }))}
-                          required
-                        />
-                      </label>
-                    </div>
-                    <button type="submit" className="button button-primary">Pagar ahora</button>
-                    {paymentStatus && (
-                      <div className={`payment-status ${paymentStatus.type}`}>{paymentStatus.message}</div>
-                    )}
-                    <p className="payment-note">Pago simulado. La pasarela real se integrará en la siguiente fase.</p>
-                  </form>
+                  <StripeCardForm
+                    submitLabel="Pagar ahora"
+                    successMessage={`Método de pago del plan ${selectedPlan} enviado correctamente.`}
+                  />
                 </>
               ) : (
                 <p className="payment-hint">Haz clic en "Comprar" en alguno de los planes para ver el formulario de pago.</p>
