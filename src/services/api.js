@@ -112,8 +112,8 @@ export const contentService = {
 };
 
 export const paymentsService = {
-  submitPaymentMethod: (paymentMethodId) =>
-    api.post('/payments/payment-method', { paymentMethodId }),
+  submitPaymentMethod: (paymentMethodId, { idempotencyKey, planTier } = {}) =>
+    api.post('/payments/payment-method', { paymentMethodId, planTier, idempotencyKey }, { headers: { ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}) } }),
 };
 
 export default api;

@@ -77,7 +77,15 @@ function StripeCardFormContent({ submitLabel, successMessage, onSuccess }) {
       }
 
       // PCI: the backend receives only Stripe's opaque identifier, never card data.
-      await paymentsService.submitPaymentMethod(paymentMethod.id);
+      // Generate or reuse client idempotency key for this checkout attempt
+      const existingKey = sessionStorage.getItem('checkout_idempotency_key');
+      const idempotencyKey = existingKey || crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      if (!existingKey) sessionStorage.setItem('checkout_idempotency_key', idempotencyKey);
+
+      // Determine plan stored by CheckoutFlow
+      const planTier = sessionStorage.getItem('checkout_plan');
+
+      await paymentsService.submitPaymentMethod(paymentMethod.id, { idempotencyKey, planTier });
       card.clear();
       setStatus({ type: 'success', message: successMessage });
       onSuccess?.(paymentMethod.id);
