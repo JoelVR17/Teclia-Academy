@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
 import { authService } from '../../services/api.js';
 import { resolveAvatar, storeAvatar } from '../../utils/avatar.js';
 import { validatePassword, PASSWORD_HINT } from '../../utils/password.js';
 import { planLabel } from '../../utils/plans.js';
+import StripeCardForm from '../../components/payments/StripeCardForm.jsx';
 import { CheckoutFlow } from '../../components/payments/CheckoutFlow.jsx';
 
 const vipPlans = [
@@ -53,7 +54,6 @@ const mapPasswordError = (err) => {
 export const ProfilePage = () => {
   const { user, updateProfile } = useAuth();
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('general');
   const [name, setName] = useState(user?.name || '');
 
@@ -69,7 +69,6 @@ export const ProfilePage = () => {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [showPassword, setShowPassword] = useState({ current: false, new: false, confirm: false });
   const [activePlan, setActivePlan] = useState(null);
-
 
   useEffect(() => {
     setName(user?.name || '');
@@ -147,9 +146,6 @@ export const ProfilePage = () => {
       setPasswordSaving(false);
     }
   };
-
-
-  
 
   const roleLabel = user?.role === 'admin'
     ? '👑 Instructor'
@@ -348,7 +344,16 @@ export const ProfilePage = () => {
             <div className="profile-section">
               <h2>Actualizar plan</h2>
               <div className="profile-card">
-                <CheckoutFlow initialPlan={user?.plan_tier} />
+                <CheckoutFlow
+                  initialPlan={user?.plan_tier}
+                  renderPaymentForm={({ plan, onSuccess }) => (
+                    <StripeCardForm
+                      submitLabel="Guardar método de pago"
+                      successMessage={`Método de pago del plan ${plan.label} enviado correctamente.`}
+                      onSuccess={onSuccess}
+                    />
+                  )}
+                />
               </div>
             </div>
           </div>

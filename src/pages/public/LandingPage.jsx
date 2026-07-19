@@ -2,6 +2,7 @@ import { CheckoutFlow } from '../../components/payments/CheckoutFlow.jsx';
 import { CheckoutModal } from '../../components/payments/CheckoutModal.jsx';
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { statsService } from '../../services/api.js';
+import StripeCardForm from '../../components/payments/StripeCardForm.jsx';
 
 const navigation = [
   { label: 'Inicio', href: '#inicio' },
@@ -629,7 +630,17 @@ function LandingPage() {
           <p style={{ margin: '0 0 1.25rem', color: '#b0b0b0', fontSize: '0.95rem' }}>
             Completando la compra de <strong>{checkoutPlan}</strong>
           </p>
-          <CheckoutFlow initialPlan={checkoutPlan} onComplete={closeCheckout} />
+          <CheckoutFlow
+            initialPlan={checkoutPlan}
+            onComplete={closeCheckout}
+            renderPaymentForm={({ plan, onSuccess }) => (
+              <StripeCardForm
+                submitLabel="Pagar ahora"
+                successMessage={`Método de pago del plan ${plan.label} enviado correctamente.`}
+                onSuccess={onSuccess}
+              />
+            )}
+          />
         </CheckoutModal>
       )}
     </div>

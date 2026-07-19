@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
+import StripeCardForm from './StripeCardForm.jsx';
 
 const PLANS = [
   { label: 'Básico',  price: '$9.99',  value: 'basico'  },
@@ -10,7 +11,7 @@ const PLANS = [
 
 const STORAGE_KEY = 'checkout_plan';
 
-export const CheckoutFlow = ({ initialPlan, onComplete }) => {
+export const CheckoutFlow = ({ initialPlan, onComplete, renderPaymentForm }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -23,8 +24,6 @@ export const CheckoutFlow = ({ initialPlan, onComplete }) => {
   const [selectedPlan, setSelectedPlan] = useState(() => {
     return initialPlan || sessionStorage.getItem(STORAGE_KEY) || null;
   });
-  const [status, setStatus] = useState(null);
-  const [processing, setProcessing] = useState(false);
 
   // Persist plan selection
   useEffect(() => {
@@ -109,55 +108,31 @@ export const CheckoutFlow = ({ initialPlan, onComplete }) => {
     );
   }
 
-  // Step 3: payment_method (mock / testing mode)
-  if (step === 'payment_method') {
-    const handleMockSubmit = async (e) => {
-      e.preventDefault();
-      setProcessing(true);
-      setStatus(null);
-      await new Promise((r) => setTimeout(r, 1500));
-      setStatus({ type: 'success', message: `¡Pago simulado exitoso para ${planData.label}!` });
+  // Step 3: payment_method (tokenized securely by Stripe Elements)
+  if (step === 'payment_method' && planData) {
+    const handlePaymentSuccess = () => {
       sessionStorage.removeItem(STORAGE_KEY);
-      setProcessing(false);
       setTimeout(() => onComplete?.(), 1200);
     };
 
+    const paymentForm = renderPaymentForm
+      ? renderPaymentForm({ plan: planData, onSuccess: handlePaymentSuccess })
+      : (
+        <StripeCardForm
+          submitLabel="Pagar ahora"
+          successMessage={`Método de pago del plan ${planData.label} enviado correctamente.`}
+          onSuccess={handlePaymentSuccess}
+        />
+      );
+
     return (
       <div className="checkout-step">
-        <span className="checkout-mock-badge">Simulador de pago</span>
         <h3>Método de pago</h3>
         <p className="checkout-hint">Plan: <strong>{planData.label}</strong> — {planData.price}</p>
-        <form onSubmit={handleMockSubmit} className="checkout-form">
-          <div className="form-group">
-            <label htmlFor="co-card">Número de tarjeta</label>
-            <input id="co-card" type="text" inputMode="numeric" placeholder="4242 4242 4242 4242"
-              disabled={processing} />
-          </div>
-          <div className="form-row">
-            <div className="form-group half-width">
-              <label htmlFor="co-expiry">Expiración</label>
-              <input id="co-expiry" type="text" placeholder="12/28" disabled={processing} />
-            </div>
-            <div className="form-group half-width">
-              <label htmlFor="co-cvc">CVC</label>
-              <input id="co-cvc" type="text" inputMode="numeric" placeholder="123" disabled={processing} />
-            </div>
-          </div>
-
-          {status && (
-            <div className={`payment-status ${status.type}`}>{status.message}</div>
-          )}
-
-          <div className="checkout-actions">
-            <button type="button" className="button button-secondary" onClick={() => setStep('review')} disabled={processing}>
-              Atrás
-            </button>
-            <button type="submit" className="button button-primary" disabled={processing}>
-              {processing ? 'Procesando...' : 'Simular pago'}
-            </button>
-          </div>
-          <p className="checkout-mock-note">Los datos no se almacenan ni procesan. Simulador de pruebas.</p>
-        </form>
+        <button type="button" className="button button-secondary" onClick={() => setStep('review')}>
+          Atrás
+        </button>
+        {paymentForm}
       </div>
     );
   }
