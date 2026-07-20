@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Icon } from '../../components/common/Icons.jsx';
+import { PersonaBanner } from '../../components/common/PersonaBanner.jsx';
 import { useContent } from '../../context/ContentContext.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
 import { statsService } from '../../services/api.js';
@@ -70,22 +71,22 @@ export const AdminDashboardPage = () => {
   return (
     <div className="dashboard-layout">
       <div className="dashboard-main">
-        <div className="dashboard-header">
-          <div className="dashboard-header-inner">
-            <div>
-              <h1>Panel del instructor</h1>
-              <p>Bienvenido, {user?.name}. Gestiona tus lecciones y recursos para los estudiantes.</p>
-            </div>
-            <div className="account-card">
-              <div className="account-avatar">{user?.name?.charAt(0) || 'U'}</div>
-              <div className="account-info">
-                <div className="account-name">{user?.name}</div>
-                <div className="account-meta">{user?.email} · <span className="role-tag">{user?.role}</span></div>
-                <div className="account-status">Estado: <strong className="status-indicator">Activo</strong></div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <PersonaBanner
+          name="Panel del instructor"
+          subtitle={`Bienvenido, ${user?.name || ''}. Gestiona tus lecciones y recursos para los estudiantes.`}
+          initial={user?.name?.charAt(0)?.toUpperCase() || 'A'}
+          chips={[
+            { label: '👑 Administrador', variant: 'gold' },
+            { label: user?.email || '', },
+            { label: 'Estado: Activo', variant: 'success' },
+          ]}
+          actions={(
+            <>
+              <Link to="/admin/upload" className="button button-primary">+ Crear contenido</Link>
+              <Link to="/admin/students" className="button button-secondary">Estudiantes</Link>
+            </>
+          )}
+        />
 
         <div className="admin-stats">
           <h2>Resumen del panel</h2>
@@ -149,26 +150,6 @@ export const AdminDashboardPage = () => {
         </div>
 
         <div className="admin-recent">
-          <h2>Contenido reciente</h2>
-          {recentContent.length === 0 ? (
-            <div className="empty-state">
-              <p>No hay contenido aún. <Link to="/admin/upload">Añade tu primer contenido</Link></p>
-            </div>
-          ) : (
-            <div className="recent-list">
-              {recentContent.map(item => (
-                <div key={item.id} className="recent-item">
-                  <div className="recent-icon"><Icon type={item.type} className="recent-icon-svg" /></div>
-                  <div className="recent-info">
-                    <h4>{item.title}</h4>
-                    <p>{item.type.toUpperCase()}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="admin-recent">
           <div className="content-header">
             <h2>Contenido reciente</h2>
             <button className="button button-ghost small" onClick={() => setShowShortcuts(true)} title="Atajos de teclado" aria-label="Atajos de teclado">
@@ -177,6 +158,7 @@ export const AdminDashboardPage = () => {
           </div>
           {recentContent.length === 0 ? (
             <div className="empty-state">
+              <span className="empty-state-icon" aria-hidden="true">🎬</span>
               <p>No hay contenido aún. <Link to="/admin/upload">Añade tu primer contenido</Link></p>
             </div>
           ) : (

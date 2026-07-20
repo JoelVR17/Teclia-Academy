@@ -43,7 +43,7 @@ export const ResetPasswordPage = () => {
           <h1>Restablecer contraseña</h1>
           <p className="auth-subtitle">Introduce tu correo, el PIN recibido y una nueva contraseña.</p>
 
-          {error && <div className="error-message">{error}</div>}
+          {error && <div key={error} className="error-message animate-shake">{error}</div>}
           {message && <div className="success-message">{message}</div>}
           {location.state?.email && (
             <div className="info-message">
@@ -95,7 +95,7 @@ export const ResetPasswordPage = () => {
               </div>
             </div>
             <button type="submit" disabled={loading} className="button button-primary button-block">
-              {loading ? 'Restableciendo...' : 'Restablecer contraseña'}
+              {loading ? <span className="btn-loading"><span className="spinner" /> Restableciendo…</span> : 'Restablecer contraseña'}
             </button>
           </form>
 
