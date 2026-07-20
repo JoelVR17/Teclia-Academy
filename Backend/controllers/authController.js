@@ -1,62 +1,77 @@
-import bcryptjs from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import sgMail from '@sendgrid/mail';
-import fs from 'fs';
-import path from 'path';
-import { getDb, saveDatabase } from '../db/init.js';
-import { getUploadsPath } from '../config/uploads.js';
-import { validatePassword } from '../utils/password.js';
-import { listNonAdminUsers, mapUserRows, normalizeLegacyUsers, ensureUserColumn } from '../utils/dbUsers.js';
-import { uploadToStorage, getSignedStorageUrl, resolveStoragePath, deleteFromStorage } from '../lib/supabaseClient.js';
+import bcryptjs from "bcryptjs";
+import jwt from "jsonwebtoken";
+import sgMail from "@sendgrid/mail";
+import prisma from "../utils/prismaClient.js";
+import { validatePassword } from "../utils/password.js";
+import { listNonAdminUsers } from "../utils/dbUsers.js";
+import { formatUser, formatUserWithCreatedAt } from "../utils/serializers.js";
+import storage from "../storage/index.js";
+import {
+  REFRESH_TOKEN_EXPIRED,
+  REFRESH_TOKEN_EXPIRED_MESSAGE,
+  INVALID_REFRESH_TOKEN,
+  INVALID_REFRESH_TOKEN_MESSAGE,
+  USER_NOT_FOUND,
+  USER_NOT_FOUND_MESSAGE,
+} from "../constants/authErrors.js";
 
 const normalizeEmail = (email) => email.trim().toLowerCase();
 
-const formatUser = (user) => ({
-  id: user.id,
-  email: user.email,
-  name: user.name,
-  role: user.role,
-  plan_tier: user.plan_tier || null,
-  avatar_url: user.avatar_url || null,
+const resolveAvatarUrl = (avatarUrl) => {
+  if (!avatarUrl) return null;
+
+  const normalized = avatarUrl.startsWith("/uploads/")
+    ? avatarUrl.replace(/^\/uploads\//, "")
+    : avatarUrl;
+
+  if (avatarUrl.startsWith("http")) {
+    return avatarUrl;
+  }
+
+  return storage.resolveUrl(normalized);
+};
+
+const formatUserResponse = (user) => ({
+  ...formatUser(user),
+  avatar_url: resolveAvatarUrl(user.avatarUrl),
 });
 
 const removeFileFromStorageOrLocal = async (fileUrl) => {
   if (!fileUrl) return;
 
-  const storagePath = resolveStoragePath(fileUrl);
-  if (storagePath) {
-    try {
-      await deleteFromStorage(storagePath);
-    } catch (_e) {
-      // ignore cleanup errors
-    }
+  const normalized = fileUrl.startsWith("/uploads/")
+    ? fileUrl.replace(/^\/uploads\//, "")
+    : fileUrl;
+
+  if (!normalized || normalized.startsWith("http")) {
     return;
   }
 
-  if (fileUrl.startsWith('/uploads/')) {
-    const oldPath = path.join(getUploadsPath(), fileUrl.replace(/^\/uploads\//, ''));
-    if (fs.existsSync(oldPath)) {
-      try {
-        fs.unlinkSync(oldPath);
-      } catch (_e) {
-        // ignore cleanup errors
-      }
-    }
+  try {
+    await storage.delete(normalized);
+  } catch (_e) {
+    // ignore cleanup errors
   }
 };
 
 const generateToken = (userId, role) => {
   return jwt.sign({ id: userId, role }, process.env.JWT_SECRET, {
-    expiresIn: '24h'
+    expiresIn: "24h",
+  });
+};
+
+const generateRefreshToken = (userId, role) => {
+  return jwt.sign({ id: userId, role }, process.env.JWT_SECRET, {
+    expiresIn: "7d",
   });
 };
 
 const createMailTransport = () => {
   return nodemailer.createTransport({
-    host: 'smtp.sendgrid.net',
+    host: "smtp.sendgrid.net",
     port: 587,
     auth: {
-      user: 'apikey',
+      user: "apikey",
       pass: process.env.SENDGRID_API_KEY,
     },
   });
@@ -67,19 +82,19 @@ const sendResetPinEmail = async (email, pin) => {
 
   const msg = {
     to: email,
-    from: 'austincomputadora@gmail.com',
-    subject: 'Tu código para recuperar contraseña de Teclia',
+    from: "austincomputadora@gmail.com",
+    subject: "Tu código para recuperar contraseña de Teclia",
     text: `Tu código para restablecer la contraseña es: ${pin}. Este código expira en 15 minutos.`,
     html: `<p>Tu código para restablecer la contraseña es: <strong>${pin}</strong>.</p><p>Este código expira en 15 minutos.</p>`,
   };
 
-  console.log('📨 Sending email to:', email);
+  console.log("📨 Sending email to:", email);
 
   try {
     await sgMail.send(msg);
-    console.log('✅ Email sent successfully');
+    console.log("✅ Email sent successfully");
   } catch (error) {
-    console.error('❌ Email error:', error.response?.body || error);
+    console.error("❌ Email error:", error.response?.body || error);
     throw error;
   }
 };
@@ -89,7 +104,9 @@ export const signup = async (req, res) => {
     const { email, password, name } = req.body;
 
     if (!email || !password || !name) {
-      return res.status(400).json({ error: 'Email, password, and name are required' });
+      return res
+        .status(400)
+        .json({ error: "Email, password, and name are required" });
     }
 
     const passwordError = validatePassword(password);
@@ -98,29 +115,34 @@ export const signup = async (req, res) => {
     }
 
     const normalizedEmail = normalizeEmail(email);
-    const db = getDb();
 
-    const existingUser = await db.exec('SELECT id FROM users WHERE LOWER(email) = ?', [normalizedEmail]);
-    if (existingUser.length > 0 && existingUser[0].values.length > 0) {
-      return res.status(400).json({ error: 'Email already registered' });
+    const existingUser = await prisma.user.findFirst({
+      where: { email: { equals: normalizedEmail } },
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ error: "Email already registered" });
     }
 
     const hashedPassword = bcryptjs.hashSync(password, 10);
 
-    const insertResult = await db.exec(
-      'INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?) RETURNING id',
-      [normalizedEmail, hashedPassword, name, 'student']
-    );
+    const user = await prisma.user.create({
+      data: {
+        email: normalizedEmail,
+        passwordHash: hashedPassword,
+        name,
+        role: "student",
+      },
+    });
 
-    saveDatabase();
-
-    const userId = insertResult[0].values[0][0];
-
-    const token = generateToken(userId, 'student');
-    res.json({
-      message: 'User created successfully',
+    const token = generateToken(user.id, "student");
+    const refreshToken = generateRefreshToken(user.id, "student");
+    
+    res.status(201).json({
+      message: "User created successfully",
       token,
-      user: { id: userId, email: normalizedEmail, name, role: 'student', avatar_url: null }
+      refreshToken,
+      user: formatUserResponse(user),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -132,45 +154,36 @@ export const login = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+      return res.status(400).json({ error: "Email and password are required" });
     }
 
     const normalizedEmail = normalizeEmail(email);
-    const db = getDb();
-    const result = await db.exec(
-      'SELECT id, email, name, password_hash, role, plan_tier, avatar_url FROM users WHERE LOWER(email) = ?',
-      [normalizedEmail]
-    );
-
-    if (result.length === 0 || result[0].values.length === 0) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    const columns = result[0].columns;
-    const values = result[0].values[0];
-    const user = {};
-    columns.forEach((col, idx) => {
-      user[col] = values[idx];
+    const user = await prisma.user.findFirst({
+      where: { email: { equals: normalizedEmail } },
     });
 
-    const passwordMatch = bcryptjs.compareSync(password, user.password_hash);
-
-    if (!passwordMatch) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+    if (!user) {
+      return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    if (user.avatar_url) {
-      const avatarPath = resolveStoragePath(user.avatar_url);
-      if (avatarPath) {
-        user.avatar_url = await getSignedStorageUrl(avatarPath);
-      }
+    if (!user.passwordHash) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    const passwordMatch = bcryptjs.compareSync(password, user.passwordHash);
+
+    if (!passwordMatch) {
+      return res.status(401).json({ error: "Invalid credentials" });
     }
 
     const token = generateToken(user.id, user.role);
-    res.json({
-      message: 'Login successful',
+    const refreshToken = generateRefreshToken(user.id, user.role);
+    
+    res.status(200).json({
+      message: "Login successful",
       token,
-      user: formatUser(user)
+      refreshToken,
+      user: formatUserResponse(user),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -179,25 +192,15 @@ export const login = async (req, res) => {
 
 export const getMe = async (req, res) => {
   try {
-    const db = getDb();
-    const result = await db.exec('SELECT id, email, name, role, plan_tier, avatar_url FROM users WHERE id = ?', [req.user.id]);
-    if (result.length === 0 || result[0].values.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
     }
 
-    const cols = result[0].columns;
-    const vals = result[0].values[0];
-    const user = {};
-    cols.forEach((c, i) => (user[c] = vals[i]));
-
-    if (user.avatar_url) {
-      const avatarPath = resolveStoragePath(user.avatar_url);
-      if (avatarPath) {
-        user.avatar_url = await getSignedStorageUrl(avatarPath);
-      }
-    }
-
-    res.json({ user });
+    res.json({ user: formatUserResponse(user) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -207,61 +210,41 @@ export const updateProfile = async (req, res) => {
   try {
     const { name, avatarUrl } = req.body;
     const avatarFile = req.file;
+
     if (!name && !avatarUrl && !avatarFile) {
-      return res.status(400).json({ error: 'No profile information provided' });
+      return res.status(400).json({ error: "No profile information provided" });
     }
 
-    const db = getDb();
-    const result = await db.exec('SELECT id, email, name, role, plan_tier, avatar_url FROM users WHERE id = ?', [req.user.id]);
-    if (result.length === 0 || result[0].values.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+    const currentUser = await prisma.user.findUnique({
+      where: { id: req.user.id },
+    });
+
+    if (!currentUser) {
+      return res.status(404).json({ error: "User not found" });
     }
 
-    const cols = result[0].columns;
-    const vals = result[0].values[0];
-    const currentUser = {};
-    cols.forEach((c, i) => (currentUser[c] = vals[i]));
+    const data = {};
 
-    const updates = [];
-    const params = [];
     if (name) {
-      updates.push('name = ?');
-      params.push(name);
+      data.name = name;
     }
+
     if (avatarFile) {
-      await removeFileFromStorageOrLocal(currentUser.avatar_url);
-
-      const storagePath = `avatars/${req.user.id}-${Date.now()}-${avatarFile.filename}`;
-      const fileBuffer = fs.readFileSync(avatarFile.path);
-      await uploadToStorage(storagePath, fileBuffer, avatarFile.mimetype);
-
-      updates.push('avatar_url = ?');
-      params.push(storagePath);
-
-      fs.unlinkSync(avatarFile.path);
+      await removeFileFromStorageOrLocal(currentUser.avatarUrl);
+      data.avatarUrl = await storage.upload(avatarFile, "avatars");
     } else if (avatarUrl) {
-      updates.push('avatar_url = ?');
-      params.push(avatarUrl);
-    }
-    params.push(req.user.id);
-
-    await db.run(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
-    saveDatabase();
-
-    const updatedResult = await db.exec('SELECT id, email, name, role, plan_tier, avatar_url FROM users WHERE id = ?', [req.user.id]);
-    const updatedCols = updatedResult[0].columns;
-    const updatedVals = updatedResult[0].values[0];
-    const user = {};
-    updatedCols.forEach((c, i) => (user[c] = updatedVals[i]));
-
-    if (user.avatar_url) {
-      const avatarPath = resolveStoragePath(user.avatar_url);
-      if (avatarPath) {
-        user.avatar_url = await getSignedStorageUrl(avatarPath);
-      }
+      data.avatarUrl = avatarUrl;
     }
 
-    res.json({ message: 'Profile updated successfully', user: formatUser(user) });
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data,
+    });
+
+    res.json({
+      message: "Profile updated successfully",
+      user: formatUserResponse(user),
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -270,8 +253,11 @@ export const updateProfile = async (req, res) => {
 export const changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
+
     if (!currentPassword || !newPassword) {
-      return res.status(400).json({ error: 'Current and new password are required' });
+      return res
+        .status(400)
+        .json({ error: "Current and new password are required" });
     }
 
     const passwordError = validatePassword(newPassword);
@@ -279,22 +265,25 @@ export const changePassword = async (req, res) => {
       return res.status(400).json({ error: passwordError });
     }
 
-    const db = getDb();
-    const result = await db.exec('SELECT password_hash FROM users WHERE id = ?', [req.user.id]);
-    if (result.length === 0 || result[0].values.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
     }
 
-    const storedHash = result[0].values[0][0];
-    if (!bcryptjs.compareSync(currentPassword, storedHash)) {
-      return res.status(401).json({ error: 'Contraseña actual incorrecta' });
+    if (!bcryptjs.compareSync(currentPassword, user.passwordHash)) {
+      return res.status(401).json({ error: "Contraseña actual incorrecta" });
     }
 
     const hashedPassword = bcryptjs.hashSync(newPassword, 10);
-    await db.run('UPDATE users SET password_hash = ? WHERE id = ?', [hashedPassword, req.user.id]);
-    saveDatabase();
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { passwordHash: hashedPassword },
+    });
 
-    res.json({ message: 'Contraseña actualizada correctamente' });
+    res.json({ message: "Contraseña actualizada correctamente" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -303,30 +292,36 @@ export const changePassword = async (req, res) => {
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
+
     if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
+      return res.status(400).json({ error: "Email is required" });
     }
 
     const normalizedEmail = normalizeEmail(email);
-    const db = getDb();
-    const result = await db.exec('SELECT id, email FROM users WHERE LOWER(email) = ?', [normalizedEmail]);
-    if (result.length === 0 || result[0].values.length === 0) {
+    const user = await prisma.user.findFirst({
+      where: { email: { equals: normalizedEmail } },
+    });
+
+    if (!user) {
       return res.status(404).json({
-        error: 'Este correo no está registrado. Debes usar el mismo correo con el que iniciaste sesión.',
+        error:
+          "Este correo no está registrado. Debes usar el mismo correo con el que iniciaste sesión.",
       });
     }
 
-    const userId = result[0].values[0][0];
-    const registeredEmail = result[0].values[0][1];
     const pin = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-    db.run('UPDATE users SET reset_pin = ?, reset_pin_expires_at = ? WHERE id = ?', [pin, expiresAt, userId]);
-    saveDatabase();
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { resetPin: pin, resetPinExpiresAt: expiresAt },
+    });
 
-    await sendResetPinEmail(registeredEmail, pin);
+    await sendResetPinEmail(user.email, pin);
 
-    res.json({ message: 'Se ha enviado un PIN de recuperación al correo electrónico' });
+    res.json({
+      message: "Se ha enviado un PIN de recuperación al correo electrónico",
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -335,8 +330,11 @@ export const forgotPassword = async (req, res) => {
 export const resetPassword = async (req, res) => {
   try {
     const { email, pin, newPassword } = req.body;
+
     if (!email || !pin || !newPassword) {
-      return res.status(400).json({ error: 'Email, PIN y nueva contraseña son requeridos' });
+      return res
+        .status(400)
+        .json({ error: "Email, PIN y nueva contraseña son requeridos" });
     }
 
     const passwordError = validatePassword(newPassword);
@@ -345,74 +343,131 @@ export const resetPassword = async (req, res) => {
     }
 
     const normalizedEmail = normalizeEmail(email);
-    const db = getDb();
-    const result = await db.exec(
-      'SELECT reset_pin, reset_pin_expires_at FROM users WHERE LOWER(email) = ?',
-      [normalizedEmail]
-    );
-    if (result.length === 0 || result[0].values.length === 0) {
-      return res.status(404).json({ error: 'Este correo no está registrado. Usa el mismo correo con el que iniciaste sesión.' });
+    const user = await prisma.user.findFirst({
+      where: { email: { equals: normalizedEmail } },
+    });
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({
+          error:
+            "Este correo no está registrado. Usa el mismo correo con el que iniciaste sesión.",
+        });
     }
 
-    const storedPin = result[0].values[0][0];
-    const expiresAt = result[0].values[0][1];
-    if (!storedPin || storedPin !== pin) {
-      return res.status(401).json({ error: 'PIN inválido' });
+    if (!user.resetPin || user.resetPin !== pin) {
+      return res.status(401).json({ error: "PIN inválido" });
     }
 
-    if (expiresAt && new Date(expiresAt) < new Date()) {
-      return res.status(401).json({ error: 'El PIN ha expirado' });
+    if (user.resetPinExpiresAt && user.resetPinExpiresAt < new Date()) {
+      return res.status(401).json({ error: "El PIN ha expirado" });
     }
 
     const hashedPassword = bcryptjs.hashSync(newPassword, 10);
-    await db.run(
-      'UPDATE users SET password_hash = ?, reset_pin = NULL, reset_pin_expires_at = NULL WHERE LOWER(email) = ?',
-      [hashedPassword, normalizedEmail]
-    );
-    saveDatabase();
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash: hashedPassword,
+        resetPin: null,
+        resetPinExpiresAt: null,
+      },
+    });
 
-    res.json({ message: 'Contraseña restablecida correctamente' });
+    res.json({ message: "Contraseña restablecida correctamente" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const refresh = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    
+    if (!refreshToken) {
+      return res.status(400).json({ error: "Refresh token is required" });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+    } catch (err) {
+      if (err.name === 'TokenExpiredError') {
+        return res.status(401).json({ 
+          error: REFRESH_TOKEN_EXPIRED_MESSAGE, 
+          code: REFRESH_TOKEN_EXPIRED,
+        });
+      }
+      if (err.name === 'JsonWebTokenError') {
+        return res.status(401).json({ 
+          error: INVALID_REFRESH_TOKEN_MESSAGE, 
+          code: INVALID_REFRESH_TOKEN,
+        });
+      }
+      return res.status(401).json({ error: INVALID_REFRESH_TOKEN_MESSAGE, code: INVALID_REFRESH_TOKEN });
+    }
+
+    // Verify user still exists
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+    });
+
+    if (!user) {
+      return res.status(401).json({ error: USER_NOT_FOUND_MESSAGE, code: USER_NOT_FOUND });
+    }
+
+    const token = generateToken(user.id, user.role);
+    const newRefreshToken = generateRefreshToken(user.id, user.role);
+    
+    res.status(200).json({ 
+      message: "Token refreshed successfully",
+      token, 
+      refreshToken: newRefreshToken 
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
 export const logout = async (req, res) => {
-  res.json({ message: 'Logout successful' });
-};
-
-export const verifyRecoveryEmail = async (req, res) => {
   try {
-    const { email } = req.body;
-    if (!email) {
-      return res.status(400).json({ error: 'El correo es obligatorio' });
-    }
-
-    const normalizedEmail = normalizeEmail(email);
-    const db = getDb();
-    const result = await db.exec(
-      'SELECT id, email, name FROM users WHERE LOWER(email) = ?',
-      [normalizedEmail]
-    );
-
-    if (result.length === 0 || result[0].values.length === 0) {
-      return res.status(404).json({
-        error: 'No existe una cuenta registrada con este correo.',
-      });
-    }
-
-    const registeredEmail = result[0].values[0][1];
-    res.json({ verified: true, email: registeredEmail });
+    // Optional: Add logout timestamp to user record for audit purposes
+    res.status(200).json({ 
+      message: "Logout successful" 
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-export const listStudents = async (req, res) => {
+export const verifyRecoveryEmail = async (req, res) => {
   try {
-    const db = getDb();
-    const result = await listNonAdminUsers(db);
-    const students = mapUserRows(result, formatUser);
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: "El correo es obligatorio" });
+    }
+
+    const normalizedEmail = normalizeEmail(email);
+    const user = await prisma.user.findFirst({
+      where: { email: { equals: normalizedEmail } },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        error: "No existe una cuenta registrada con este correo.",
+      });
+    }
+
+    res.json({ verified: true, email: user.email });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const listStudents = async (_req, res) => {
+  try {
+    const students = await listNonAdminUsers();
     res.json({ students });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -423,44 +478,44 @@ export const updateStudentPlan = async (req, res) => {
   try {
     const { id } = req.params;
     const { plan_tier } = req.body;
+    const userId = Number(id);
 
-    if (plan_tier !== null && plan_tier !== '' && !['basico', 'pro', 'master'].includes(plan_tier)) {
-      return res.status(400).json({ error: 'Plan no válido. Opciones: basico, pro, master' });
+    if (
+      plan_tier !== null &&
+      plan_tier !== "" &&
+      !["basico", "pro", "master"].includes(plan_tier)
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Plan no válido. Opciones: basico, pro, master" });
     }
 
-    const normalizedPlan = plan_tier === '' || plan_tier === null ? null : plan_tier;
-    const newRole = normalizedPlan ? 'premium' : 'student';
+    const normalizedPlan =
+      plan_tier === "" || plan_tier === null ? null : plan_tier;
+    const newRole = normalizedPlan ? "premium" : "student";
 
-    const db = getDb();
-    await normalizeLegacyUsers(db);
-    await ensureUserColumn(db, 'plan_tier', 'plan_tier TEXT DEFAULT NULL');
+    const found = await prisma.user.findUnique({ where: { id: userId } });
 
-    const found = await db.exec('SELECT id, role FROM users WHERE id = ?', [id]);
-    if (found.length === 0 || found[0].values.length === 0) {
-      return res.status(404).json({ error: 'Estudiante no encontrado' });
+    if (!found) {
+      return res.status(404).json({ error: "Estudiante no encontrado" });
     }
 
-    if (found[0].values[0][1] === 'admin') {
-      return res.status(400).json({ error: 'No se puede modificar un administrador' });
+    if (found.role === "admin") {
+      return res
+        .status(400)
+        .json({ error: "No se puede modificar un administrador" });
     }
 
-    await db.run('UPDATE users SET plan_tier = ?, role = ? WHERE id = ?', [normalizedPlan, newRole, id]);
-    saveDatabase();
-
-    const updated = await db.exec(
-      'SELECT id, name, email, role, plan_tier, avatar_url, created_at FROM users WHERE id = ?',
-      [id]
-    );
-    const cols = updated[0].columns;
-    const vals = updated[0].values[0];
-    const student = {};
-    cols.forEach((col, i) => {
-      student[col] = vals[i];
+    const student = await prisma.user.update({
+      where: { id: userId },
+      data: { planTier: normalizedPlan, role: newRole },
     });
 
     res.json({
-      message: normalizedPlan ? `Plan ${normalizedPlan} asignado correctamente` : 'Plan removido correctamente',
-      student: { ...formatUser(student), created_at: student.created_at },
+      message: normalizedPlan
+        ? `Plan ${normalizedPlan} asignado correctamente`
+        : "Plan removido correctamente",
+      student: formatUserWithCreatedAt(student),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -469,36 +524,35 @@ export const updateStudentPlan = async (req, res) => {
 
 export const deleteStudent = async (req, res) => {
   try {
-    const { id } = req.params;
-    const db = getDb();
+    const userId = Number(req.params.id);
 
-    const found = await db.exec('SELECT id, role, avatar_url FROM users WHERE id = ?', [id]);
-    if (found.length === 0 || found[0].values.length === 0) {
-      return res.status(404).json({ error: 'Estudiante no encontrado' });
+    const found = await prisma.user.findUnique({ where: { id: userId } });
+
+    if (!found) {
+      return res.status(404).json({ error: "Estudiante no encontrado" });
     }
 
-    const role = found[0].values[0][1];
-    const avatarUrl = found[0].values[0][2];
-
-    if (role === 'admin') {
-      return res.status(400).json({ error: 'No se puede eliminar una cuenta de administrador' });
+    if (found.role === "admin") {
+      return res
+        .status(400)
+        .json({ error: "No se puede eliminar una cuenta de administrador" });
     }
 
-    await removeFileFromStorageOrLocal(avatarUrl);
+    await removeFileFromStorageOrLocal(found.avatarUrl);
 
-    const contentResults = await db.exec('SELECT url FROM content WHERE uploaded_by = ?', [id]);
-    if (contentResults.length > 0 && contentResults[0].values.length > 0) {
-      for (const row of contentResults[0].values) {
-        const fileUrl = row[0];
-        await removeFileFromStorageOrLocal(fileUrl);
-      }
-      await db.run('DELETE FROM content WHERE uploaded_by = ?', [id]);
+    const contentItems = await prisma.content.findMany({
+      where: { uploadedBy: userId },
+      select: { url: true },
+    });
+
+    for (const item of contentItems) {
+      await removeFileFromStorageOrLocal(item.url);
     }
 
-    await db.run('DELETE FROM users WHERE id = ?', [id]);
-    saveDatabase();
+    await prisma.content.deleteMany({ where: { uploadedBy: userId } });
+    await prisma.user.delete({ where: { id: userId } });
 
-    res.json({ message: 'Cuenta eliminada correctamente' });
+    res.json({ message: "Cuenta eliminada correctamente" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
