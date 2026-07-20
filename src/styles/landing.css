@@ -68,7 +68,7 @@
   width: min(720px, 100%);
   margin: 0 auto;
   text-align: center;
-  padding-bottom: 2.75rem;
+  padding-bottom: 2rem;
   animation: fade-up 0.7s var(--ease-out) both;
 }
 

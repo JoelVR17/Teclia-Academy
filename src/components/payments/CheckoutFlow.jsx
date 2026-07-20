@@ -86,6 +86,7 @@ export const CheckoutFlow = ({ initialPlan, onComplete, renderPaymentForm }) => 
           disabled={!selectedPlan}
           onClick={() => {
             if (!user) {
+              sessionStorage.setItem('checkout_resume', '1');
               const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
               navigate(`/auth/login?returnTo=${returnTo}`);
               return;

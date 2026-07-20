@@ -85,7 +85,12 @@ function LandingPage() {
   const [sustainActive, setSustainActive] = useState(false);
   const [checkoutPlan, setCheckoutPlan] = useState(null);
   const checkoutBuying = useRef(false);
-  const closeCheckout = () => { setCheckoutPlan(null); checkoutBuying.current = false; };
+  const closeCheckout = () => {
+    setCheckoutPlan(null);
+    checkoutBuying.current = false;
+    sessionStorage.removeItem('checkout_plan');
+    sessionStorage.removeItem('checkout_resume');
+  };
   const audioContextRef = useRef(null);
   const audioStartedRef = useRef(false);
   const sustainHoldRef = useRef(false);
@@ -97,12 +102,12 @@ function LandingPage() {
       .catch(() => { });
   }, []);
 
-  // Resume checkout after login redirect
+  // Resume checkout only after login redirect, not on every visit
   useEffect(() => {
+    if (sessionStorage.getItem('checkout_resume') !== '1') return;
+    sessionStorage.removeItem('checkout_resume');
     const savedPlan = sessionStorage.getItem('checkout_plan');
-    if (savedPlan && !checkoutPlan) {
-      setCheckoutPlan(savedPlan);
-    }
+    if (savedPlan) setCheckoutPlan(savedPlan);
   }, []);
 
   const selectedScaleNotes = useMemo(() => {
@@ -381,10 +386,6 @@ function LandingPage() {
           <div className="lp-hero-content">
             <p className="lp-kicker">Academia de piano online</p>
             <h1 id="lp-brand" className="lp-brand-mark">Teclia</h1>
-            <p className="lp-headline">Aprende a tocar con método, claridad y acompañamiento real.</p>
-            <p className="lp-lead">
-              Lecciones en video, partituras y un teclado interactivo pensados para que practiques con dirección — no a ciegas.
-            </p>
             <div className="lp-cta-row">
               <a className="button button-primary" href="/auth/signup">Comenzar gratis</a>
               <a className="button button-secondary" href="#planes">Ver planes</a>
@@ -392,8 +393,8 @@ function LandingPage() {
           </div>
           <div className="lp-hero-keys" aria-hidden="true">
             <div className="lp-keys-row">
-              {['C', 'D', 'E', 'F', 'G', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'A', 'B'].map((label, i) => (
-                <span key={`${label}-${i}`} className="lp-ivory">{label}</span>
+              {Array.from({ length: 14 }, (_, i) => (
+                <span key={i} className="lp-ivory" />
               ))}
             </div>
             <div className="lp-keys-black">
