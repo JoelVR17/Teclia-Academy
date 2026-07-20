@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Icon } from '../common/Icons.jsx';
+import { Icon, UIIcon } from '../common/Icons.jsx';
 import { StatusBadge } from '../admin/StatusBadge.jsx';
 
 const TIER_ORDER = { free: 0, basico: 1, pro: 2, master: 3 };
@@ -44,7 +44,7 @@ export const ContentCard = ({ item, user }) => {
         {!unlocked && (
           <div className="tc-locked">
             <div className="tc-locked-inner">
-              <span className="tc-lock-icon" aria-hidden="true">🔒</span>
+              <span className="tc-lock-icon" aria-hidden="true"><UIIcon name="lock" size={24} /></span>
               <p>Disponible en el plan {tier}</p>
               <Link to="/profile?tab=subscription" className="button button-primary small">
                 Mejorar plan

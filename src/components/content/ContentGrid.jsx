@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Icon } from '../common/Icons.jsx';
+import { Icon, UIIcon } from '../common/Icons.jsx';
 import { planLabel } from '../../utils/plans.js';
 import { ContentCard } from './ContentCard.jsx';
 
@@ -54,7 +54,7 @@ export const ContentGrid = ({ content = [], onDelete, isAdmin = false, user = nu
         </div>
       ) : filteredContent.length === 0 ? (
         <div className="empty-state">
-          <span className="empty-state-icon" aria-hidden="true">🎼</span>
+          <span className="empty-state-icon" aria-hidden="true"><UIIcon name="music" size={26} /></span>
           <p>No hay contenido {filter !== 'all' ? `de tipo ${filter}` : 'disponible'} por ahora.</p>
           <p className="text-muted">Vuelve pronto: se añaden recursos con frecuencia.</p>
         </div>

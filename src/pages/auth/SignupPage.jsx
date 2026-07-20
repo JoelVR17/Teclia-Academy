@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth.js';
 import { validatePassword, PASSWORD_HINT } from '../../utils/password.js';
 import { PasswordStrengthMeter } from '../../components/common/PasswordStrengthMeter.jsx';
 import { AuthLayout } from '../../components/auth/AuthLayout.jsx';
+import { UIIcon } from '../../components/common/Icons.jsx';
 
 export const SignupPage = () => {
   const [name, setName] = useState('');
@@ -95,9 +96,10 @@ export const SignupPage = () => {
                 <button
                   type="button"
                   className="password-toggle"
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                   onClick={() => setShowPassword((prev) => !prev)}
                 >
-                  {showPassword ? '🙈' : '👁️'}
+                  <UIIcon name={showPassword ? 'eyeOff' : 'eye'} size={18} />
                 </button>
               </div>
               <PasswordStrengthMeter password={password} />
@@ -118,9 +120,10 @@ export const SignupPage = () => {
                 <button
                   type="button"
                   className="password-toggle"
+                  aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                   onClick={() => setShowConfirmPassword((prev) => !prev)}
                 >
-                  {showConfirmPassword ? '🙈' : '👁️'}
+                  <UIIcon name={showConfirmPassword ? 'eyeOff' : 'eye'} size={18} />
                 </button>
               </div>
             </div>
