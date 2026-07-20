@@ -6,6 +6,19 @@ import StripeCardForm from '../../components/payments/StripeCardForm.jsx';
 import { SiteFooter } from '../../components/common/SiteFooter.jsx';
 import { UIIcon } from '../../components/common/Icons.jsx';
 
+const demoSlides = [
+  { icon: 'video', title: 'Explora las lecciones', text: 'Rutas de aprendizaje en video, ordenadas paso a paso.' },
+  { icon: 'piano', title: 'Practica una escala', text: 'Teclado interactivo con escalas resaltadas en tiempo real.' },
+  { icon: 'star', title: 'Sube de plan', text: 'Desbloquea partituras exclusivas y sesiones 1:1.' },
+  { icon: 'trophy', title: 'Domina el piano', text: 'Avanza con constancia hasta tu certificado Teclia.' },
+];
+
+const trustChips = [
+  { icon: 'video', label: 'Lecciones en video' },
+  { icon: 'sheet', label: 'Partituras incluidas' },
+  { icon: 'star', label: 'Planes flexibles' },
+];
+
 const steps = [
   { title: 'Crea tu cuenta', text: 'Regístrate en un minuto y entra a tu espacio de práctica.' },
   { title: 'Elige tu plan', text: 'Accede al contenido según el nivel de acompañamiento que buscas.' },
@@ -84,6 +97,7 @@ function LandingPage() {
   const [sustainMode, setSustainMode] = useState(false);
   const [sustainActive, setSustainActive] = useState(false);
   const [checkoutPlan, setCheckoutPlan] = useState(null);
+  const [demoStep, setDemoStep] = useState(0);
   const checkoutBuying = useRef(false);
   const closeCheckout = () => {
     setCheckoutPlan(null);
@@ -108,6 +122,16 @@ function LandingPage() {
     sessionStorage.removeItem('checkout_resume');
     const savedPlan = sessionStorage.getItem('checkout_plan');
     if (savedPlan) setCheckoutPlan(savedPlan);
+  }, []);
+
+  // Auto-cycling hero mini-demo (respects reduced motion)
+  useEffect(() => {
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) return undefined;
+    const id = setInterval(() => {
+      setDemoStep((s) => (s + 1) % demoSlides.length);
+    }, 2600);
+    return () => clearInterval(id);
   }, []);
 
   const selectedScaleNotes = useMemo(() => {
@@ -380,27 +404,61 @@ function LandingPage() {
   return (
     <div className="lp">
       <main>
-        {/* ============ HERO: one composition ============ */}
-        <section className="lp-hero" id="inicio" aria-labelledby="lp-brand">
-          <div className="lp-hero-atmosphere" aria-hidden="true" />
-          <div className="lp-hero-content">
-            <p className="lp-kicker">Academia de piano online</p>
-            <h1 id="lp-brand" className="lp-brand-mark">Teclia</h1>
-            <div className="lp-cta-row">
-              <a className="button button-primary" href="/auth/signup">Comenzar gratis</a>
-              <a className="button button-secondary" href="#planes">Ver planes</a>
+        {/* ============ HERO: copy + animated demo ============ */}
+        <section className="lp-hero lp-hero-split bg-grid" id="inicio">
+          <div className="lp-hero-glow" aria-hidden="true" />
+          <div className="lp-hero-inner">
+            <div className="hero-copy animate-fade-up">
+              <span className="lp-badge"><span className="dot" /> Academia online · Música para todos</span>
+              <h1>Aprende piano <span className="grad">con acompañamiento real.</span></h1>
+              <p className="lp-lead">
+                Lecciones en video, partituras y ejercicios interactivos para practicar con claridad y avanzar con confianza.
+              </p>
+              <div className="lp-cta-row">
+                <a className="button button-primary" href="/auth/signup">Comenzar gratis</a>
+                <a className="button button-secondary" href="#planes">Ver planes</a>
+              </div>
+              <ul className="lp-trust">
+                {trustChips.map((chip) => (
+                  <li className="chip" key={chip.label}>
+                    <UIIcon name={chip.icon} size={14} />
+                    {chip.label}
+                  </li>
+                ))}
+              </ul>
             </div>
-          </div>
-          <div className="lp-hero-keys" aria-hidden="true">
-            <div className="lp-keys-row">
-              {Array.from({ length: 14 }, (_, i) => (
-                <span key={i} className="lp-ivory" />
-              ))}
-            </div>
-            <div className="lp-keys-black">
-              {[1, 2, 4, 5, 6, 8, 9, 11, 12, 13].map((pos) => (
-                <span key={pos} className="lp-ebony" style={{ ['--k']: pos }} />
-              ))}
+
+            <div className="hero-panel">
+              <div className="lp-demo animate-fade-up" style={{ '--delay': '120ms' }}>
+                <span className="lp-note-float" style={{ top: '14%', right: '10%' }} aria-hidden="true">♪</span>
+                <span className="lp-note-float" style={{ bottom: '12%', left: '8%', animationDelay: '1.5s' }} aria-hidden="true">♫</span>
+                <div className="lp-demo-head">
+                  <div className="lp-demo-dots"><span /><span /><span /></div>
+                  <span className="lp-demo-title">Teclia · demo</span>
+                </div>
+                <div className="lp-demo-stage">
+                  <div className="lp-demo-slide" key={demoStep}>
+                    <div className="lp-demo-icon" aria-hidden="true">
+                      <UIIcon name={demoSlides[demoStep].icon} size={28} />
+                    </div>
+                    <h4>{demoSlides[demoStep].title}</h4>
+                    <p>{demoSlides[demoStep].text}</p>
+                  </div>
+                </div>
+                <div className="lp-demo-progress" role="tablist" aria-label="Pasos de la demo">
+                  {demoSlides.map((slide, i) => (
+                    <button
+                      key={slide.title}
+                      type="button"
+                      className={i === demoStep ? 'on' : ''}
+                      onClick={() => setDemoStep(i)}
+                      aria-label={slide.title}
+                      aria-selected={i === demoStep}
+                      role="tab"
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </section>
