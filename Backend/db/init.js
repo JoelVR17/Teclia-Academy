@@ -120,6 +120,17 @@ const createSqliteDb = async () => {
     value INTEGER DEFAULT 0
   )`);
 
+  db.run(`CREATE TABLE IF NOT EXISTS payments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    plan_tier TEXT NOT NULL,
+    stripe_session_id TEXT UNIQUE NOT NULL,
+    amount_cents INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )`);
+
   await tryAlter('ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT NULL');
   await tryAlter('ALTER TABLE users ADD COLUMN reset_pin TEXT DEFAULT NULL');
   await tryAlter('ALTER TABLE users ADD COLUMN reset_pin_expires_at DATETIME DEFAULT NULL');
@@ -162,6 +173,18 @@ const createPostgresSchema = async () => {
     CREATE TABLE IF NOT EXISTS site_stats (
       key TEXT PRIMARY KEY,
       value INTEGER DEFAULT 0
+    )
+  `);
+
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS payments (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      plan_tier TEXT NOT NULL,
+      stripe_session_id TEXT UNIQUE NOT NULL,
+      amount_cents INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
 

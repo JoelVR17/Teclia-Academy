@@ -26,6 +26,7 @@ export const setupTestDb = () => {
     const db = getDb();
     try {
       // remove non-admin users and content between tests
+      await db.run("DELETE FROM payments");
       await db.run("DELETE FROM content");
       await db.run("DELETE FROM users WHERE LOWER(email) != '" + ADMIN_EMAIL + "'");
       await db.run("DELETE FROM site_stats");

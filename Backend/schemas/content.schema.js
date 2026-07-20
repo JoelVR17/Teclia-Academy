@@ -4,12 +4,6 @@ export const contentType = z.enum(['video', 'article', 'quiz'], {
   errorMap: () => ({ message: 'Type must be one of: video, article, quiz' }),
 });
 
-const normalizeString = (label) =>
-  z
-    .string()
-    .min(1, { message: `${label} is required` })
-    .transform((value) => value.trim());
-
 const optionalTag = z
   .string()
   .min(1, { message: 'Each tag must contain at least one character' })
@@ -35,9 +29,11 @@ const bodyOrDescription = z
   }));
 
 export const createContent = z.object({
-  title: normalizeString('Title')
+  title: z
+    .string()
     .min(3, { message: 'Title must be at least 3 characters long' })
-    .max(120, { message: 'Title cannot exceed 120 characters' }),
+    .max(120, { message: 'Title cannot exceed 120 characters' })
+    .transform((value) => value.trim()),
   type: contentType,
   ...bodyOrDescription.shape,
   tags: z.array(optionalTag).optional(),
@@ -45,9 +41,11 @@ export const createContent = z.object({
 
 export const updateContent = z
   .object({
-    title: normalizeString('Title')
+    title: z
+      .string()
       .min(3, { message: 'Title must be at least 3 characters long' })
       .max(120, { message: 'Title cannot exceed 120 characters' })
+      .transform((value) => value.trim())
       .optional(),
     type: contentType.optional(),
     body: z

@@ -31,6 +31,17 @@ CREATE TABLE IF NOT EXISTS site_stats (
   value INTEGER DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS payments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  plan_tier TEXT NOT NULL,
+  stripe_session_id TEXT UNIQUE NOT NULL,
+  amount_cents INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
 INSERT OR IGNORE INTO users (email, password_hash, name, role, plan_tier)
 VALUES (
   'austinrmz2007@gmail.com',

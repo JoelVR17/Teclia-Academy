@@ -210,6 +210,37 @@ Routes are grouped below. All examples assume the base URL prefix `/api`.
 
 ----
 
+**Payments routes** (`/api/payments`)
+
+- POST /api/payments/checkout
+  - Description: Create a Stripe Checkout Session for the authenticated user for a paid plan (`basico`, `pro`, or `master`). Persists a pending payment record linked to the session and returns the Checkout URL.
+  - Auth required: Yes (Bearer token)
+  - Body example:
+
+```json
+{
+  "plan": "pro"
+}
+```
+
+  - Response example (200):
+
+```json
+{
+  "checkoutUrl": "https://checkout.stripe.com/c/pay/cs_test_...",
+  "sessionId": "cs_test_..."
+}
+```
+
+  - Error responses:
+    - 401 — missing or invalid JWT: `{ "error": "No token provided" }` or `{ "error": "Invalid or expired token" }`
+    - 400 — missing or invalid plan (validation): `{ "error": "Validation failed", "code": "VALIDATION_ERROR", "fields": { "plan": "..." } }`
+    - 400 — plan price not configured in env: `{ "error": "Stripe price is not configured for plan \"pro\". Set STRIPE_PRICE_PRO." }`
+    - 500 — Stripe secret key missing: `{ "error": "Payment service is not configured" }`
+    - 502 — Stripe API failure: `{ "error": "Unable to create checkout session" }`
+
+----
+
 Notes and mapping
 
 - The API endpoints in this documentation correspond to the server code under `Backend/routes`.
