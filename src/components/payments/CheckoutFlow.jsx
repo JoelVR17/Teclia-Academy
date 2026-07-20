@@ -46,8 +46,8 @@ export const CheckoutFlow = ({ initialPlan, onComplete, renderPaymentForm }) => 
             <button
               key={plan.value}
               type="button"
-              className={`checkout-plan-card ${selectedPlan === plan.label ? 'active' : ''}`}
-              onClick={() => { setSelectedPlan(plan.label); }}
+              className={`checkout-plan-card ${selectedPlan === plan.value ? 'active' : ''}`}
+              onClick={() => { setSelectedPlan(plan.value); }}
             >
               <strong>{plan.label}</strong>
               <span className="checkout-price">{plan.price}</span>
