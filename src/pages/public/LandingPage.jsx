@@ -4,36 +4,33 @@ import { useMemo, useRef, useState, useEffect } from 'react';
 import { statsService } from '../../services/api.js';
 import StripeCardForm from '../../components/payments/StripeCardForm.jsx';
 import { SiteFooter } from '../../components/common/SiteFooter.jsx';
-
-const navigation = [
-  { label: 'Inicio', href: '#inicio' },
-  { label: 'Cómo funciona', href: '#como-funciona' },
-  { label: 'Planes', href: '#planes' },
-  { label: 'Recursos', href: '#explora' },
-  { label: 'Contacto', href: '#contacto' },
-];
+import { UIIcon } from '../../components/common/Icons.jsx';
 
 const demoSlides = [
-  { icon: '🎬', title: 'Explora las lecciones', text: 'Rutas de aprendizaje en video, ordenadas paso a paso.' },
-  { icon: '🎹', title: 'Practica una escala', text: 'Teclado interactivo con escalas resaltadas en tiempo real.' },
-  { icon: '⭐', title: 'Sube de plan', text: 'Desbloquea partituras exclusivas y sesiones 1:1.' },
-  { icon: '🏆', title: 'Domina el piano', text: 'Avanza con constancia hasta tu certificado Teclia.' },
+  { icon: 'video', title: 'Explora las lecciones', text: 'Rutas de aprendizaje en video, ordenadas paso a paso.' },
+  { icon: 'piano', title: 'Practica una escala', text: 'Teclado interactivo con escalas resaltadas en tiempo real.' },
+  { icon: 'star', title: 'Sube de plan', text: 'Desbloquea partituras exclusivas y sesiones 1:1.' },
+  { icon: 'trophy', title: 'Domina el piano', text: 'Avanza con constancia hasta tu certificado Teclia.' },
+];
+
+const trustChips = [
+  { icon: 'video', label: 'Lecciones en video' },
+  { icon: 'sheet', label: 'Partituras incluidas' },
+  { icon: 'star', label: 'Planes flexibles' },
 ];
 
 const steps = [
-  { title: 'Regístrate', text: 'Crea tu cuenta gratis en menos de un minuto.' },
-  { title: 'Elige tu plan', text: 'Selecciona el ritmo y el contenido que necesitas.' },
-  { title: 'Aprende', text: 'Lecciones en video, partituras y ejercicios guiados.' },
-  { title: 'Domina', text: 'Practica, recibe feedback y alcanza tus metas.' },
+  { title: 'Crea tu cuenta', text: 'Regístrate en un minuto y entra a tu espacio de práctica.' },
+  { title: 'Elige tu plan', text: 'Accede al contenido según el nivel de acompañamiento que buscas.' },
+  { title: 'Practica con método', text: 'Video, partitura y teclado interactivo en la misma ruta.' },
+  { title: 'Toca con confianza', text: 'Avanza con claridad, feedback y constancia real.' },
 ];
 
 const features = [
-  { icon: '🎬', title: 'Lecciones en video', text: 'Clases prácticas y rutas de aprendizaje estructuradas para cada nivel.' },
-  { icon: '🎼', title: 'Partituras incluidas', text: 'Pistas de acompañamiento y partituras listas para tu práctica diaria.' },
-  { icon: '🧩', title: 'Ejercicios guiados', text: 'Módulos organizados que te llevan de lo básico a lo avanzado.' },
-  { icon: '📚', title: 'Teoría clara', text: 'Escalas, armonía y teoría explicadas de forma simple y aplicada.' },
-  { icon: '💬', title: 'Acompañamiento', text: 'Comunidad y soporte para resolver dudas mientras aprendes.' },
-  { icon: '📈', title: 'Progreso visible', text: 'Sigue tu avance y mantén la motivación en cada práctica.' },
+  { icon: 'video', title: 'Lecciones en video', text: 'Clases prácticas, ordenadas por nivel, para estudiar a tu ritmo.' },
+  { icon: 'sheet', title: 'Partituras listas', text: 'Material preparado para sentarte al piano y empezar a tocar.' },
+  { icon: 'piano', title: 'Teclado interactivo', text: 'Escalas y notas resaltadas para oír y ver lo que practicas.' },
+  { icon: 'book', title: 'Teoría aplicada', text: 'Armonía y lectura explicadas con ejemplos que sí usas.' },
 ];
 
 const premiumPlans = [
@@ -102,7 +99,12 @@ function LandingPage() {
   const [checkoutPlan, setCheckoutPlan] = useState(null);
   const [demoStep, setDemoStep] = useState(0);
   const checkoutBuying = useRef(false);
-  const closeCheckout = () => { setCheckoutPlan(null); checkoutBuying.current = false; };
+  const closeCheckout = () => {
+    setCheckoutPlan(null);
+    checkoutBuying.current = false;
+    sessionStorage.removeItem('checkout_plan');
+    sessionStorage.removeItem('checkout_resume');
+  };
   const audioContextRef = useRef(null);
   const audioStartedRef = useRef(false);
   const sustainHoldRef = useRef(false);
@@ -114,12 +116,12 @@ function LandingPage() {
       .catch(() => { });
   }, []);
 
-  // Resume checkout after login redirect
+  // Resume checkout only after login redirect, not on every visit
   useEffect(() => {
+    if (sessionStorage.getItem('checkout_resume') !== '1') return;
+    sessionStorage.removeItem('checkout_resume');
     const savedPlan = sessionStorage.getItem('checkout_plan');
-    if (savedPlan && !checkoutPlan) {
-      setCheckoutPlan(savedPlan);
-    }
+    if (savedPlan) setCheckoutPlan(savedPlan);
   }, []);
 
   // Auto-cycling hero mini-demo (respects reduced motion)
@@ -400,98 +402,94 @@ function LandingPage() {
   };
 
   return (
-    <div className="page-shell lp">
-      <header className="topbar" id="inicio">
-        <nav className="nav-links">
-          {navigation.map((link) => (
-            <a key={link.href} href={link.href}>
-              {link.label}
-            </a>
-          ))}
-        </nav>
-      </header>
-
+    <div className="lp">
       <main>
-        {/* ============ HERO ============ */}
-        <section className="lp-hero bg-grid">
+        {/* ============ HERO: copy + animated demo ============ */}
+        <section className="lp-hero lp-hero-split bg-grid" id="inicio">
           <div className="lp-hero-glow" aria-hidden="true" />
-          <div className="hero-copy animate-fade-up">
-            <span className="lp-badge"><span className="dot" /> Academia online · Música para todos</span>
-            <h1>Aprende piano <span className="grad">con acompañamiento real.</span></h1>
-            <p className="lp-lead">
-              Lecciones en video, partituras y ejercicios interactivos diseñados por tu
-              profesor para que practiques con claridad y avances con confianza.
-            </p>
-            <div className="lp-cta-row">
-              <a className="button button-primary" href="/auth/signup">Comenzar gratis</a>
-              <a className="button button-secondary" href="#planes">Ver planes</a>
-            </div>
-            <ul className="lp-trust">
-              <li className="chip">🎬 Lecciones en video</li>
-              <li className="chip">🎼 Partituras incluidas</li>
-              <li className="chip">⭐ Planes flexibles</li>
-            </ul>
-          </div>
-
-          <div className="hero-panel">
-            <div className="lp-demo animate-fade-up" style={{ '--delay': '120ms' }}>
-              <span className="lp-note-float" style={{ top: '14%', right: '10%' }} aria-hidden="true">♪</span>
-              <span className="lp-note-float" style={{ bottom: '12%', left: '8%', animationDelay: '1.5s' }} aria-hidden="true">♫</span>
-              <div className="lp-demo-head">
-                <div className="lp-demo-dots"><span /><span /><span /></div>
-                <span className="lp-demo-title">Teclia · demo</span>
+          <div className="lp-hero-inner">
+            <div className="hero-copy animate-fade-up">
+              <span className="lp-badge"><span className="dot" /> Academia online · Música para todos</span>
+              <h1>Aprende piano <span className="grad">con acompañamiento real.</span></h1>
+              <p className="lp-lead">
+                Lecciones en video, partituras y ejercicios interactivos para practicar con claridad y avanzar con confianza.
+              </p>
+              <div className="lp-cta-row">
+                <a className="button button-primary" href="/auth/signup">Comenzar gratis</a>
+                <a className="button button-secondary" href="#planes">Ver planes</a>
               </div>
-              <div className="lp-demo-stage">
-                <div className="lp-demo-slide" key={demoStep}>
-                  <div className="lp-demo-icon" aria-hidden="true">{demoSlides[demoStep].icon}</div>
-                  <h4>{demoSlides[demoStep].title}</h4>
-                  <p>{demoSlides[demoStep].text}</p>
-                </div>
-              </div>
-              <div className="lp-demo-progress" role="tablist" aria-label="Pasos de la demo">
-                {demoSlides.map((slide, i) => (
-                  <button
-                    key={slide.title}
-                    type="button"
-                    className={i === demoStep ? 'on' : ''}
-                    onClick={() => setDemoStep(i)}
-                    aria-label={slide.title}
-                    aria-selected={i === demoStep}
-                    role="tab"
-                  />
+              <ul className="lp-trust">
+                {trustChips.map((chip) => (
+                  <li className="chip" key={chip.label}>
+                    <UIIcon name={chip.icon} size={14} />
+                    {chip.label}
+                  </li>
                 ))}
+              </ul>
+            </div>
+
+            <div className="hero-panel">
+              <div className="lp-demo animate-fade-up" style={{ '--delay': '120ms' }}>
+                <span className="lp-note-float" style={{ top: '14%', right: '10%' }} aria-hidden="true">♪</span>
+                <span className="lp-note-float" style={{ bottom: '12%', left: '8%', animationDelay: '1.5s' }} aria-hidden="true">♫</span>
+                <div className="lp-demo-head">
+                  <div className="lp-demo-dots"><span /><span /><span /></div>
+                  <span className="lp-demo-title">Teclia · demo</span>
+                </div>
+                <div className="lp-demo-stage">
+                  <div className="lp-demo-slide" key={demoStep}>
+                    <div className="lp-demo-icon" aria-hidden="true">
+                      <UIIcon name={demoSlides[demoStep].icon} size={28} />
+                    </div>
+                    <h4>{demoSlides[demoStep].title}</h4>
+                    <p>{demoSlides[demoStep].text}</p>
+                  </div>
+                </div>
+                <div className="lp-demo-progress" role="tablist" aria-label="Pasos de la demo">
+                  {demoSlides.map((slide, i) => (
+                    <button
+                      key={slide.title}
+                      type="button"
+                      className={i === demoStep ? 'on' : ''}
+                      onClick={() => setDemoStep(i)}
+                      aria-label={slide.title}
+                      aria-selected={i === demoStep}
+                      role="tab"
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         </section>
 
         {/* ============ CÓMO FUNCIONA ============ */}
-        <section className="section-surface" id="como-funciona">
-          <div className="section-intro">
-            <p className="eyebrow-gold">Cómo funciona</p>
-            <h2>Empieza a tocar en cuatro pasos.</h2>
+        <section className="lp-section" id="como-funciona">
+          <div className="lp-section-head">
+            <p className="lp-kicker">Cómo funciona</p>
+            <h2>De la primera lección a tocar con seguridad.</h2>
           </div>
-          <div className="lp-steps">
-            {steps.map((step) => (
-              <div className="lp-step" key={step.title}>
-                <div className="lp-step-num" aria-hidden="true" />
-                <h4>{step.title}</h4>
+          <ol className="lp-steps">
+            {steps.map((step, i) => (
+              <li className="lp-step" key={step.title}>
+                <span className="lp-step-index">{String(i + 1).padStart(2, '0')}</span>
+                <h3>{step.title}</h3>
                 <p>{step.text}</p>
-              </div>
+              </li>
             ))}
-          </div>
+          </ol>
         </section>
 
         {/* ============ FEATURES ============ */}
-        <section className="section-surface" id="features">
-          <div className="section-intro">
-            <p className="eyebrow-gold">¿Por qué Teclia?</p>
-            <h2>Todo lo que necesitas para aprender, en un solo lugar.</h2>
+        <section className="lp-section" id="features">
+          <div className="lp-section-head">
+            <p className="lp-kicker">La academia</p>
+            <h2>Todo lo esencial para avanzar, en un solo lugar.</h2>
           </div>
           <div className="lp-features">
             {features.map((f) => (
               <article className="lp-feature" key={f.title}>
-                <div className="lp-feature-icon" aria-hidden="true">{f.icon}</div>
+                <div className="lp-feature-icon" aria-hidden="true"><UIIcon name={f.icon} size={22} /></div>
                 <h3>{f.title}</h3>
                 <p>{f.text}</p>
               </article>
@@ -500,11 +498,11 @@ function LandingPage() {
         </section>
 
         {/* ============ PLANES ============ */}
-        <section className="section-surface" id="planes">
-          <div className="section-intro">
-            <p className="eyebrow-gold">Planes</p>
-            <h2>Elige el plan que se adapta a tu ritmo.</h2>
-            <p className="section-copy">Sin permanencia. Mejora o cambia de plan cuando quieras.</p>
+        <section className="lp-section" id="planes">
+          <div className="lp-section-head">
+            <p className="lp-kicker">Planes</p>
+            <h2>Elige el ritmo que necesitas.</h2>
+            <p className="lp-section-copy">Sin permanencia. Cambia de plan cuando quieras.</p>
           </div>
           <div className="lp-pricing">
             {premiumPlans.map((plan) => (
@@ -519,7 +517,7 @@ function LandingPage() {
                 <ul>
                   {plan.features.map((feature) => (
                     <li key={feature}>
-                      <span className="lp-check" aria-hidden="true">✓</span>
+                      <UIIcon name="check" size={16} className="lp-check" />
                       {feature}
                     </li>
                   ))}
@@ -529,7 +527,7 @@ function LandingPage() {
                   className={`button ${plan.highlight ? 'button-primary' : 'button-secondary'} button-block`}
                   onClick={() => openCheckout(plan.label)}
                 >
-                  Comprar {plan.label}
+                  Elegir {plan.label}
                 </button>
               </div>
             ))}
@@ -537,11 +535,11 @@ function LandingPage() {
         </section>
 
         {/* ============ HERRAMIENTA INTERACTIVA ============ */}
-        <section className="section-surface section-explore" id="explora">
+        <section className="lp-section lp-explore" id="explora">
           <div className="explore-copy">
-            <p className="eyebrow-gold">Explora</p>
-            <h2>Recursos gratuitos que hacen que aprender sea intuitivo.</h2>
-            <p>Biblioteca de escalas, teoría musical y ejercicios interactivos. Prueba el teclado y escucha cada nota.</p>
+            <p className="lp-kicker">Practica ahora</p>
+            <h2>Escucha las escalas. Vuelve a tocarlas.</h2>
+            <p>Elige una tonalidad, una escala y pulsa el teclado. El audio se activa con tu primera nota.</p>
             <div className="scale-sign-selector">
               {rootNotes.map((note) => (
                 <button
@@ -612,20 +610,19 @@ function LandingPage() {
                 );
               })}
             </div>
-            <p className="keyboard-caption">Presiona cualquier tecla para activar el audio y escuchar cada nota.</p>
+            <p className="keyboard-caption">Presiona cualquier tecla para activar el audio.</p>
           </div>
         </section>
 
         {/* ============ TESTIMONIOS ============ */}
-        <section className="section-surface" id="testimonios">
-          <div className="section-intro">
-            <p className="eyebrow-gold">Testimonios</p>
-            <h2>Estudiantes que ya tocan lo que soñaban.</h2>
+        <section className="lp-section" id="testimonios">
+          <div className="lp-section-head">
+            <p className="lp-kicker">Alumnos</p>
+            <h2>Historias reales de progreso.</h2>
           </div>
           <div className="lp-testimonials">
             {testimonials.map((t) => (
               <article className="lp-quote" key={t.name}>
-                <div className="lp-stars" aria-label="5 de 5 estrellas">★★★★★</div>
                 <p>“{t.quote}”</p>
                 <div className="lp-quote-author">
                   <span className="lp-quote-avatar" aria-hidden="true">{t.initial}</span>
@@ -640,12 +637,12 @@ function LandingPage() {
         </section>
 
         {/* ============ CTA FINAL ============ */}
-        <section id="contacto">
-          <div className="lp-cta">
-            <p className="eyebrow-gold" style={{ justifyContent: 'center' }}>Empieza hoy</p>
+        <section className="lp-finale" id="contacto">
+          <div className="lp-finale-inner">
+            <p className="lp-kicker">Empieza hoy</p>
             <h2>Tu primera lección está a un clic.</h2>
-            <p>Únete a Teclia y descubre lo natural que puede ser aprender piano con la guía correcta.</p>
-            <div className="lp-cta-row" style={{ justifyContent: 'center' }}>
+            <p>Únete a Teclia y practica con la guía correcta desde el primer día.</p>
+            <div className="lp-cta-row">
               <a className="button button-invert" href="/auth/signup">Comenzar gratis</a>
               <a className="button button-secondary" href="#planes">Ver planes</a>
             </div>

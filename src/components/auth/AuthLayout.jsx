@@ -1,4 +1,5 @@
 import { Logo } from '../common/Logo.jsx';
+import { UIIcon } from '../common/Icons.jsx';
 
 const defaultBullets = [
   'Lecciones en video paso a paso',
@@ -15,7 +16,7 @@ export const AuthLayout = ({ children, title, subtitle, bullets = defaultBullets
         <p>{subtitle || 'Una academia online diseñada para que practiques con claridad y avances con confianza.'}</p>
         <ul className="auth-brand-list">
           {bullets.map((b) => (
-            <li key={b}><span className="lp-check" aria-hidden="true">✓</span>{b}</li>
+            <li key={b}><UIIcon name="check" size={16} className="lp-check" />{b}</li>
           ))}
         </ul>
       </aside>

@@ -13,7 +13,7 @@ const cardElementOptions = {
   style: {
     base: {
       color: '#f5f5f5',
-      fontFamily: 'Inter, system-ui, sans-serif',
+      fontFamily: 'Manrope, system-ui, sans-serif',
       fontSize: '16px',
       '::placeholder': {
         color: '#9ca3af',

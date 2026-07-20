@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { Icon } from '../../components/common/Icons.jsx';
+import { Icon, UIIcon } from '../../components/common/Icons.jsx';
 import { PersonaBanner } from '../../components/common/PersonaBanner.jsx';
 import { useContent } from '../../context/ContentContext.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
@@ -76,9 +76,9 @@ export const AdminDashboardPage = () => {
           subtitle={`Bienvenido, ${user?.name || ''}. Gestiona tus lecciones y recursos para los estudiantes.`}
           initial={user?.name?.charAt(0)?.toUpperCase() || 'A'}
           chips={[
-            { label: '👑 Administrador', variant: 'gold' },
+            { label: 'Administrador', variant: 'gold' },
             { label: user?.email || '', },
-            { label: 'Estado: Activo', variant: 'success' },
+            { label: 'Cuenta activa', variant: 'success' },
           ]}
           actions={(
             <>
@@ -102,12 +102,12 @@ export const AdminDashboardPage = () => {
               </>
             ) : (
               <>
-                <StatCard label="Visitas a la página" value={pageVisits} icon="👁️" trend={12} highlight />
-                <StatCard label="Estudiantes" value={studentCount} icon="👥" trend={8} />
-                <StatCard label="Total contenidos" value={stats.total} icon="📚" />
-                <StatCard label="Videos" value={stats.videos} icon="🎬" />
-                <StatCard label="PDFs" value={stats.pdfs} icon="📄" />
-                <StatCard label="Audios" value={stats.audios} icon="🎵" highlight />
+                <StatCard label="Visitas a la página" value={pageVisits} icon={<UIIcon name="eye" size={18} />} trend={12} highlight />
+                <StatCard label="Estudiantes" value={studentCount} icon={<UIIcon name="users" size={18} />} trend={8} />
+                <StatCard label="Total contenidos" value={stats.total} icon={<UIIcon name="book" size={18} />} />
+                <StatCard label="Videos" value={stats.videos} icon={<UIIcon name="video" size={18} />} />
+                <StatCard label="PDFs" value={stats.pdfs} icon={<UIIcon name="file" size={18} />} />
+                <StatCard label="Audios" value={stats.audios} icon={<UIIcon name="music" size={18} />} highlight />
               </>
             )}
           </div>
@@ -117,32 +117,32 @@ export const AdminDashboardPage = () => {
           <h2>Acciones rápidas</h2>
           <div className="quick-actions-grid">
             <Link to="/admin/students" className="action-card">
-              <div className="action-icon">+</div>
+              <div className="action-icon"><UIIcon name="plus" size={20} /></div>
               <h3>Añadir estudiante</h3>
               <p>Registrar nuevo alumno en la plataforma</p>
             </Link>
             <Link to="/admin/upload" className="action-card">
-              <div className="action-icon">★</div>
+              <div className="action-icon"><UIIcon name="upload" size={20} /></div>
               <h3>Crear contenido</h3>
               <p>Subir video, PDF, audio o imagen</p>
             </Link>
             <Link to="/admin/content" className="action-card">
-              <div className="action-icon">📋</div>
+              <div className="action-icon"><UIIcon name="clipboard" size={20} /></div>
               <h3>Gestionar contenido</h3>
               <p>Revisar y administrar recursos</p>
             </Link>
             <Link to="/admin/students" className="action-card">
-              <div className="action-icon">👥</div>
+              <div className="action-icon"><UIIcon name="users" size={20} /></div>
               <h3>Ver estudiantes</h3>
               <p>Consultar alumnos y sus planes</p>
             </Link>
             <a href="/admin" className="action-card" onClick={(e) => { e.preventDefault(); alert('Reportes próximamente'); }}>
-              <div className="action-icon">📊</div>
+              <div className="action-icon"><UIIcon name="chart" size={20} /></div>
               <h3>Ver reportes</h3>
               <p>Estadísticas y análisis de plataforma</p>
             </a>
             <a href="/admin" className="action-card" onClick={(e) => { e.preventDefault(); alert('Exportación próximamente'); }}>
-              <div className="action-icon">⬇️</div>
+              <div className="action-icon"><UIIcon name="download" size={20} /></div>
               <h3>Exportar datos</h3>
               <p>Descargar datos de estudiantes</p>
             </a>
@@ -153,12 +153,12 @@ export const AdminDashboardPage = () => {
           <div className="content-header">
             <h2>Contenido reciente</h2>
             <button className="button button-ghost small" onClick={() => setShowShortcuts(true)} title="Atajos de teclado" aria-label="Atajos de teclado">
-              ⌨️ Atajos
+              <UIIcon name="keyboard" size={16} /> Atajos
             </button>
           </div>
           {recentContent.length === 0 ? (
             <div className="empty-state">
-              <span className="empty-state-icon" aria-hidden="true">🎬</span>
+              <span className="empty-state-icon" aria-hidden="true"><UIIcon name="video" size={26} /></span>
               <p>No hay contenido aún. <Link to="/admin/upload">Añade tu primer contenido</Link></p>
             </div>
           ) : (

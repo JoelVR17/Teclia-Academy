@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { ContentGrid } from '../../components/content/ContentGrid.jsx';
 import { hasAccess } from '../../components/content/ContentCard.jsx';
 import { NextStepBanner } from '../../components/dashboard/NextStepBanner.jsx';
+import { UIIcon } from '../../components/common/Icons.jsx';
 import { useContent } from '../../context/ContentContext.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
 import { resolveAvatar } from '../../utils/avatar.js';
@@ -57,16 +58,16 @@ export const DashboardPage = () => {
 
         <div className="dash-stats">
           <div className="dash-stat">
-            <div className="dash-stat-top"><span className="dash-stat-icon" aria-hidden="true">📚</span> Recursos disponibles</div>
+            <div className="dash-stat-top"><span className="dash-stat-icon" aria-hidden="true"><UIIcon name="book" size={17} /></span> Recursos disponibles</div>
             <div className="dash-stat-value">{loading ? '—' : content.length}</div>
           </div>
           <div className="dash-stat">
-            <div className="dash-stat-top"><span className="dash-stat-icon" aria-hidden="true">🔓</span> Desbloqueados para ti</div>
+            <div className="dash-stat-top"><span className="dash-stat-icon" aria-hidden="true"><UIIcon name="unlock" size={17} /></span> Desbloqueados para ti</div>
             <div className="dash-stat-value">{loading ? '—' : unlockedCount}</div>
           </div>
           <div className="dash-stat">
-            <div className="dash-stat-top"><span className="dash-stat-icon" aria-hidden="true">⭐</span> Tu plan</div>
-            <div className="dash-stat-value" style={{ fontSize: '1.35rem' }}>{planLabel(user?.plan_tier).replace(/^[^\w]+/, '')}</div>
+            <div className="dash-stat-top"><span className="dash-stat-icon" aria-hidden="true"><UIIcon name="star" size={17} /></span> Tu plan</div>
+            <div className="dash-stat-value" style={{ fontSize: '1.35rem' }}>{planLabel(user?.plan_tier)}</div>
           </div>
         </div>
 
