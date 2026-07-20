@@ -1,142 +1,65 @@
 # Teclia Academia
 
-This repository contains a React frontend and an Express backend for the Teclia Academia project.
+Teclia Academia is a small learning platform combining a React + Vite frontend with an Express backend for authentication, content management and basic usage statistics.
 
-## Local Setup
+This repository contains the full-stack code (frontend in the repository root and backend under `Backend/`). The backend supports either local SQLite (default) or PostgreSQL/Supabase.
 
-Follow these steps to run both frontend and backend locally.
+**Quick links**
 
-### 1. Backend Setup
+- Developer setup: [DEVELOPER_SETUP.md](DEVELOPER_SETUP.md)
+- Full API reference: [API_DOCUMENTATION.md](API_DOCUMENTATION.md)
 
-1. Open a terminal and navigate to the backend folder:
+## Features
+
+- Email/password authentication (JWT):
+- User profiles with avatar uploads (Supabase storage or local uploads)
+- Content upload and access control by plan tier (free/basico/premium)
+- Basic site statistics tracking
+
+## Tech stack
+
+- Frontend: React (18), Vite, Axios
+- Backend: Node.js (ESM), Express, JWT-based auth, multer, Supabase storage client
+- Database: SQLite by default, optional PostgreSQL (via `DATABASE_URL`)
+
+## Getting started (short)
+
+1. Read the full developer setup: [DEVELOPER_SETUP.md](DEVELOPER_SETUP.md)
+2. Start the backend (from `Backend/`):
 
 ```bash
 cd Backend
-```
-
-2. Install backend dependencies:
-
-```bash
 npm install
-```
-
-3. Start the backend server:
-
-```bash
 npm run dev
 ```
 
-This will start the backend on port `3001` by default.
-
-#### Optional: Run production backend
-
-```bash
-npm start
-```
-
-### 2. Frontend Setup
-
-1. Open a second terminal and navigate to the project root:
-
-```bash
-cd ..
-```
-
-2. Install frontend dependencies:
+3. Start the frontend (project root):
 
 ```bash
 npm install
-```
-
-3. Start the Vite development server:
-
-```bash
 npm run dev
 ```
 
-The frontend will start on the default Vite port, usually `5173`.
+4. Visit the frontend (Vite) URL (typically `http://localhost:5173`) and ensure backend API is reachable at `http://localhost:3001`.
 
-### 3. Configure Frontend to Use Local Backend
+## Where to read more
 
-The frontend currently points to a deployed backend URL in `src/services/api.js`.
+- Developer setup and environment variables: [DEVELOPER_SETUP.md](DEVELOPER_SETUP.md)
+- API reference and examples: [API_DOCUMENTATION.md](API_DOCUMENTATION.md)
 
-To use your local backend instead, update `BACKEND_BASE_URL` in `src/services/api.js`:
+## Contributing
 
-```js
-export const BACKEND_BASE_URL = 'http://localhost:3001';
-```
+If you'd like to contribute:
 
-Then restart the frontend.
+1. Fork the repository and create a branch for your work.
+2. Open a pull request describing the change and relevant motivation or screenshots.
+3. Keep changes focused and add tests where applicable.
 
-## Notes
+If you plan to modify backend behavior that affects the API, update [API_DOCUMENTATION.md](API_DOCUMENTATION.md) accordingly.
 
-- The backend uses `dotenv` and can support environment variables like `PORT`, `DATABASE_URL`, `DATABASE_PATH`, and `JWT_SECRET`.
-- If `JWT_SECRET` is not set, the backend uses a development fallback secret.
-- The frontend runs independently from the backend, so make sure both are running before testing functionality.
+## License
 
-## Database SQL Setup
+This repository does not include a finalized license. Add a `LICENSE` file with the desired license (e.g., MIT) before publishing.
 
-This project supports both SQLite and PostgreSQL.
-
-### SQLite SQL script
-
-Use this script if you want the default local SQLite database setup.
-
-File: `Backend/sqlite_setup.sql`
-
-Run:
-
-```bash
-cd Backend
-sqlite3 teclia.db < sqlite_setup.sql
-```
-
-### PostgreSQL SQL script
-
-Use this script if you want to initialize a Postgres database.
-
-File: `Backend/postgres_setup.sql`
-
-Example with `psql`:
-
-```bash
-cd Backend
-psql "$DATABASE_URL" -f postgres_setup.sql
-```
-
-### Supabase setup
-
-To run the script in Supabase:a
-
-1. Create a new Supabase project.
-2. Open the SQL editor in Supabase.
-3. Paste the contents of `Backend/postgres_setup.sql` and execute it.
-4. Set the Supabase database URL in the backend environment as `DATABASE_URL`.
-
-If you do not have `psql`, install the PostgreSQL client or use your preferred Postgres tool.
-
-### Seed data includedd:
-The SQL scripts create these tables:
-
-- `users`
-- `content`
-- `site_stats`
-
-The scripts also insert a local admin user and a sample content row.
-
-Admin credentials:
-
-- email: `austinrmz2007@gmail.com`
-- password: `Mondaisa2007*`
-
-## Quick Commands
-
-From the repository root:
-
-```bash
-# Start the backend
-cd Backend && npm install && npm run dev
-
-# In a separate terminal, start the frontend
-cd .. && npm install && npm run dev
-```
+---
+_If anything in this README is unclear, open an issue or ask for clarification in a PR._

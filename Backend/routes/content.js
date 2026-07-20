@@ -1,37 +1,48 @@
 import express from 'express';
-import path from 'path';
 import multer from 'multer';
-import fs from 'fs';
-import { getContent, getContentById, uploadContent, deleteContent, getFreeContent } from '../controllers/contentController.js';
-import { verifyToken, adminOnly } from '../middleware/auth.js';
-import { getUploadsPath } from '../config/uploads.js';
+import { getContent, getContentById, uploadContent, updateContent, deleteContent, getFreeContent } from '../controllers/contentController.js';
+import { verifyToken, optionalAuth, adminOnly } from '../middleware/auth.js';
+import validate from '../middleware/validate.js';
+import * as contentSchemas from '../schemas/content.schema.js';
 
-const uploadsDir = getUploadsPath();
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-	destination: (req, file, cb) => cb(null, uploadsDir),
-	filename: (req, file, cb) => {
-		const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
-		const ext = path.extname(file.originalname);
-		cb(null, `${unique}${ext}`);
-	}
-});
-
-const upload = multer({ storage });
+const upload = multer({ storage: multer.memoryStorage() });
 
 const router = express.Router();
 
-router.get('/', getContent);
+const mapBodyToDescription = (req, _res, next) => {
+  if (req.body?.body) {
+    req.body.description = req.body.body;
+    delete req.body.body;
+  }
+  next();
+};
+
+router.get('/', optionalAuth, validate(contentSchemas.listContent, { target: 'query' }), getContent);
 router.get('/free', verifyToken, getFreeContent);
-router.get('/:id', getContentById);
+router.get('/:id', optionalAuth, validate(contentSchemas.contentId, { target: 'params' }), getContentById);
 
 // Admin-only upload endpoint (supports file upload via 'file')
-router.post('/upload', verifyToken, adminOnly, upload.single('file'), uploadContent);
+router.post(
+  '/upload',
+  verifyToken,
+  adminOnly,
+  upload.single('file'),
+  validate(contentSchemas.createContent),
+  mapBodyToDescription,
+  uploadContent
+);
+
+router.put(
+  '/:id',
+  verifyToken,
+  adminOnly,
+  upload.single('file'),
+  validate(contentSchemas.updateContent),
+  mapBodyToDescription,
+  updateContent
+);
 
 // Admin-only delete
-router.delete('/:id', verifyToken, adminOnly, deleteContent);
+router.delete('/:id', verifyToken, adminOnly, validate(contentSchemas.contentId, { target: 'params' }), deleteContent);
 
 export default router;

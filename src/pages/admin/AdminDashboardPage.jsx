@@ -1,21 +1,60 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Icon } from '../../components/common/Icons.jsx';
+import { PersonaBanner } from '../../components/common/PersonaBanner.jsx';
 import { useContent } from '../../context/ContentContext.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
 import { statsService } from '../../services/api.js';
+import { useKeyboardShortcuts, KeyboardShortcutsHelp } from '../../components/common/KeyboardShortcuts.jsx';
+
+const StatCard = ({ label, value, icon, trend, highlight }) => (
+  <div className={`stat-card ${highlight ? 'highlight' : ''}`}>
+    <div className="stat-card-header">
+      {icon && <span className="stat-icon">{icon}</span>}
+      <span className="stat-label">{label}</span>
+    </div>
+    <div className="stat-value">{value ?? '—'}</div>
+    {trend !== undefined && (
+      <div className={`stat-trend ${trend >= 0 ? 'trend-up' : 'trend-down'}`}>
+        {trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}%
+      </div>
+    )}
+  </div>
+);
+
+const SkeletonStat = () => (
+  <div className="stat-card skeleton">
+    <div className="skeleton-line skeleton-line-sm" />
+    <div className="skeleton-line skeleton-line-lg" />
+    <div className="skeleton-line skeleton-line-xs" />
+  </div>
+);
 
 export const AdminDashboardPage = () => {
+  const navigate = useNavigate();
   const { content } = useContent();
   const { user } = useAuth();
-  const [pageVisits, setPageVisits] = useState(0);
-  const [studentCount, setStudentCount] = useState(0);
+  const [pageVisits, setPageVisits] = useState(null);
+  const [studentCount, setStudentCount] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+
+  useKeyboardShortcuts({
+    showHelp: () => setShowShortcuts((p) => !p),
+    addStudent: () => navigate('/admin/students'),
+    createContent: () => navigate('/admin/upload'),
+    goDashboard: () => navigate('/admin'),
+    goStudents: () => navigate('/admin/students'),
+    goContent: () => navigate('/admin/content'),
+  });
 
   const recentContent = content.slice(0, 5);
   const stats = {
     total: content.length,
     videos: content.filter(c => c.type === 'video').length,
     pdfs: content.filter(c => c.type === 'pdf').length,
+    audios: content.filter(c => c.type === 'audio').length,
+    images: content.filter(c => c.type === 'image').length,
   };
 
   useEffect(() => {
@@ -25,77 +64,101 @@ export const AdminDashboardPage = () => {
         setPageVisits(res.data.pageVisits || 0);
         setStudentCount(res.data.studentCount || 0);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   return (
     <div className="dashboard-layout">
       <div className="dashboard-main">
-        <div className="dashboard-header">
-          <div className="dashboard-header-inner">
-            <div>
-              <h1>Panel del instructor</h1>
-              <p>Bienvenido, {user?.name}. Gestiona tus lecciones y recursos para los estudiantes.</p>
-            </div>
-            <div className="account-card">
-              <div className="account-avatar">{user?.name?.charAt(0) || 'U'}</div>
-              <div className="account-info">
-                <div className="account-name">{user?.name}</div>
-                <div className="account-meta">{user?.email} · <span className="role-tag">{user?.role}</span></div>
-                <div className="account-status">Estado: <strong className="status-indicator">Activo</strong></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="admin-quick-actions">
-          <Link to="/admin/upload" className="action-card">
-            <div className="action-icon">+</div>
-            <h3>Subir contenido</h3>
-            <p>Agrega video, PDF, audio o imagen con un flujo claro.</p>
-          </Link>
-          <Link to="/admin/content" className="action-card">
-            <div className="action-icon">★</div>
-            <h3>Gestor de contenido</h3>
-            <p>Revisa y administra todos los recursos publicados.</p>
-          </Link>
-          <Link to="/admin/students" className="action-card">
-            <div className="action-icon">👥</div>
-            <h3>Estudiantes</h3>
-            <p>Consulta alumnos registrados, correos, categoría y fotos.</p>
-          </Link>
-        </div>
+        <PersonaBanner
+          name="Panel del instructor"
+          subtitle={`Bienvenido, ${user?.name || ''}. Gestiona tus lecciones y recursos para los estudiantes.`}
+          initial={user?.name?.charAt(0)?.toUpperCase() || 'A'}
+          chips={[
+            { label: '👑 Administrador', variant: 'gold' },
+            { label: user?.email || '', },
+            { label: 'Estado: Activo', variant: 'success' },
+          ]}
+          actions={(
+            <>
+              <Link to="/admin/upload" className="button button-primary">+ Crear contenido</Link>
+              <Link to="/admin/students" className="button button-secondary">Estudiantes</Link>
+            </>
+          )}
+        />
 
         <div className="admin-stats">
           <h2>Resumen del panel</h2>
           <div className="stats-grid">
-            <div className="stat-card highlight">
-              <div className="stat-value">{pageVisits}</div>
-              <div className="stat-label">Visitas a la página</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">{studentCount}</div>
-              <div className="stat-label">Estudiantes</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">{stats.total}</div>
-              <div className="stat-label">Contenidos</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">{stats.videos}</div>
-              <div className="stat-label">Videos</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">{stats.pdfs}</div>
-              <div className="stat-label">PDFs</div>
-            </div>
+            {loading ? (
+              <>
+                <SkeletonStat />
+                <SkeletonStat />
+                <SkeletonStat />
+                <SkeletonStat />
+                <SkeletonStat />
+                <SkeletonStat />
+              </>
+            ) : (
+              <>
+                <StatCard label="Visitas a la página" value={pageVisits} icon="👁️" trend={12} highlight />
+                <StatCard label="Estudiantes" value={studentCount} icon="👥" trend={8} />
+                <StatCard label="Total contenidos" value={stats.total} icon="📚" />
+                <StatCard label="Videos" value={stats.videos} icon="🎬" />
+                <StatCard label="PDFs" value={stats.pdfs} icon="📄" />
+                <StatCard label="Audios" value={stats.audios} icon="🎵" highlight />
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="admin-quick-actions">
+          <h2>Acciones rápidas</h2>
+          <div className="quick-actions-grid">
+            <Link to="/admin/students" className="action-card">
+              <div className="action-icon">+</div>
+              <h3>Añadir estudiante</h3>
+              <p>Registrar nuevo alumno en la plataforma</p>
+            </Link>
+            <Link to="/admin/upload" className="action-card">
+              <div className="action-icon">★</div>
+              <h3>Crear contenido</h3>
+              <p>Subir video, PDF, audio o imagen</p>
+            </Link>
+            <Link to="/admin/content" className="action-card">
+              <div className="action-icon">📋</div>
+              <h3>Gestionar contenido</h3>
+              <p>Revisar y administrar recursos</p>
+            </Link>
+            <Link to="/admin/students" className="action-card">
+              <div className="action-icon">👥</div>
+              <h3>Ver estudiantes</h3>
+              <p>Consultar alumnos y sus planes</p>
+            </Link>
+            <a href="/admin" className="action-card" onClick={(e) => { e.preventDefault(); alert('Reportes próximamente'); }}>
+              <div className="action-icon">📊</div>
+              <h3>Ver reportes</h3>
+              <p>Estadísticas y análisis de plataforma</p>
+            </a>
+            <a href="/admin" className="action-card" onClick={(e) => { e.preventDefault(); alert('Exportación próximamente'); }}>
+              <div className="action-icon">⬇️</div>
+              <h3>Exportar datos</h3>
+              <p>Descargar datos de estudiantes</p>
+            </a>
           </div>
         </div>
 
         <div className="admin-recent">
-          <h2>Contenido reciente</h2>
+          <div className="content-header">
+            <h2>Contenido reciente</h2>
+            <button className="button button-ghost small" onClick={() => setShowShortcuts(true)} title="Atajos de teclado" aria-label="Atajos de teclado">
+              ⌨️ Atajos
+            </button>
+          </div>
           {recentContent.length === 0 ? (
             <div className="empty-state">
+              <span className="empty-state-icon" aria-hidden="true">🎬</span>
               <p>No hay contenido aún. <Link to="/admin/upload">Añade tu primer contenido</Link></p>
             </div>
           ) : (
@@ -113,6 +176,10 @@ export const AdminDashboardPage = () => {
           )}
         </div>
       </div>
+
+      {showShortcuts && (
+        <KeyboardShortcutsHelp onClose={() => setShowShortcuts(false)} />
+      )}
     </div>
   );
 };

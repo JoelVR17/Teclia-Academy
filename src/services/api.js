@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { getRequestSignal, invokeLogout } from '../utils/authSession.js';
+import { getCsrfToken, getStoredToken, generateCsrfToken } from '../utils/jwt.js';
 
 export const BACKEND_BASE_URL = 'https://teclia-academia-2.onrender.com';
 const API_BASE_URL = `${BACKEND_BASE_URL}/api`;
@@ -10,14 +12,42 @@ const api = axios.create({
   },
 });
 
-// Add JWT token to requests
+const AUTH_ENDPOINTS = /\/auth\/(login|signup|forgot-password|reset-password)/;
+
+// Add JWT token, CSRF token, and abort signal to requests
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('authToken');
+  const token = getStoredToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  let csrf = getCsrfToken();
+  if (!csrf) {
+    csrf = generateCsrfToken();
+  }
+  if (csrf && !config.url.includes('/auth/')) {
+    config.headers['X-CSRF-Token'] = csrf;
+  }
+  if (csrf && !config.url.includes('/auth/')) {
+    config.headers['X-CSRF-Token'] = csrf;
+  }
+  config.signal = getRequestSignal();
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const url = error.config?.url ?? '';
+    const isAuthEndpoint = AUTH_ENDPOINTS.test(url);
+
+    if (status === 401 && !isAuthEndpoint) {
+      invokeLogout({ reason: 'expired', showToast: true, redirectTo: '/auth/login' });
+    }
+
+    return Promise.reject(error);
+  },
+);
 
 export const authService = {
   signup: (email, password, name) =>
@@ -56,6 +86,15 @@ export const authService = {
     api.patch(`/auth/students/${studentId}/plan`, { plan_tier: planTier }),
   deleteStudent: (studentId) =>
     api.delete(`/auth/students/${studentId}`),
+  updateStudentStatus: (studentId, status) =>
+    api.patch(`/admin/users/${studentId}/status`, { status }),
+};
+
+export const adminService = {
+  getDashboardStats: () =>
+    api.get('/admin/stats'),
+  deleteContent: (contentId) =>
+    api.delete(`/content/${contentId}`),
 };
 
 export const statsService = {
@@ -70,6 +109,11 @@ export const contentService = {
     api.get(`/content/${id}`),
   getFreeContent: () =>
     api.get('/content/free'),
+};
+
+export const paymentsService = {
+  submitPaymentMethod: (paymentMethodId, { idempotencyKey, planTier } = {}) =>
+    api.post('/payments/payment-method', { paymentMethodId, planTier, idempotencyKey }, { headers: { ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}) } }),
 };
 
 export default api;

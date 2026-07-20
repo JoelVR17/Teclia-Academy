@@ -1,26 +1,31 @@
-import { Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
+import { getStoredToken, isTokenExpired } from '../../utils/jwt.js';
 
-// role: optional prop to restrict to a specific role (e.g. 'admin')
-export const ProtectedRoute = ({ children, role }) => {
-  const { user, loading } = useAuth();
+export const ProtectedRoute = ({ children }) => {
+  const { user, loading, clearSession } = useAuth();
+  const location = useLocation();
+  const storedToken = getStoredToken();
+  const currentPath = `${location.pathname}${location.search}`;
+
+  useEffect(() => {
+    if (!loading && storedToken && isTokenExpired(storedToken)) {
+      clearSession({ reason: 'expired' });
+    }
+  }, [loading, storedToken, clearSession]);
 
   if (loading) {
     return <div className="loading">Cargando...</div>;
   }
 
-  if (!user) {
-    return <Navigate to="/auth/login" replace />;
+  if (storedToken && isTokenExpired(storedToken)) {
+    return <Navigate to="/auth/login?reason=expired" replace />;
   }
 
-  if (role && user.role !== role) {
-    return (
-      <div className="page-shell">
-        <h1>403 - Acceso denegado</h1>
-        <p>No tienes permisos suficientes para acceder a esta sección.</p>
-        <a href="/" className="button button-primary">Volver a inicio</a>
-      </div>
-    );
+  if (!user) {
+    const redirect = encodeURIComponent(currentPath);
+    return <Navigate to={`/auth/login?redirect=${redirect}`} replace />;
   }
 
   return children;
