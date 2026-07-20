@@ -2,6 +2,7 @@ import { useState } from 'react';
 import api from '../../services/api.js';
 import { useContent } from '../../context/ContentContext.jsx';
 import { CONTENT_PLANS } from '../../utils/plans.js';
+import { UIIcon } from '../common/Icons.jsx';
 
 export const UploadForm = () => {
   const [title, setTitle] = useState('');
@@ -155,10 +156,10 @@ export const UploadForm = () => {
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
         >
-          <span className="dropzone-icon" aria-hidden="true">⬆️</span>
+          <span className="dropzone-icon" aria-hidden="true"><UIIcon name="upload" size={26} /></span>
           <span className="dropzone-title">Arrastra un archivo aquí</span>
           <span className="dropzone-hint">o haz clic para seleccionar</span>
-          {file && <span className="dropzone-file">📎 {file.name}</span>}
+          {file && <span className="dropzone-file"><UIIcon name="paperclip" size={14} /> {file.name}</span>}
           <input
             type="file"
             onChange={(e) => setFile(e.target.files[0] || null)}

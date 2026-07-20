@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { authService } from '../../services/api.js';
 import { validatePassword, PASSWORD_HINT } from '../../utils/password.js';
+import { UIIcon } from '../../components/common/Icons.jsx';
 
 export const ResetPasswordPage = () => {
   const location = useLocation();
@@ -88,9 +89,10 @@ export const ResetPasswordPage = () => {
                 <button
                   type="button"
                   className="password-toggle"
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                   onClick={() => setShowPassword((prev) => !prev)}
                 >
-                  {showPassword ? '🙈' : '👁️'}
+                  <UIIcon name={showPassword ? 'eyeOff' : 'eye'} size={18} />
                 </button>
               </div>
             </div>

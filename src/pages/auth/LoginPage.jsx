@@ -3,6 +3,7 @@ import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-do
 import { useAuth } from '../../hooks/useAuth.js';
 import { getSafeRedirect } from '../../utils/safeRedirect.js';
 import { AuthLayout } from '../../components/auth/AuthLayout.jsx';
+import { UIIcon } from '../../components/common/Icons.jsx';
 
 export const LoginPage = () => {
   const location = useLocation();
@@ -90,9 +91,10 @@ export const LoginPage = () => {
                 <button
                   type="button"
                   className="password-toggle"
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                   onClick={() => setShowPassword((prev) => !prev)}
                 >
-                  {showPassword ? '🙈' : '👁️'}
+                  <UIIcon name={showPassword ? 'eyeOff' : 'eye'} size={18} />
                 </button>
               </div>
             </div>
