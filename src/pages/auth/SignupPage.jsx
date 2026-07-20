@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
 import { validatePassword, PASSWORD_HINT } from '../../utils/password.js';
 import { PasswordStrengthMeter } from '../../components/common/PasswordStrengthMeter.jsx';
+import { AuthLayout } from '../../components/auth/AuthLayout.jsx';
 
 export const SignupPage = () => {
   const [name, setName] = useState('');
@@ -45,13 +46,15 @@ export const SignupPage = () => {
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-container">
-        <div className="auth-card">
+    <AuthLayout
+      title="Empieza a tocar piano hoy."
+      subtitle="Crea tu cuenta gratis y desbloquea recursos, lecciones y tu teclado interactivo."
+    >
+      <div className="auth-card">
           <h1>Crear cuenta</h1>
           <p className="auth-subtitle">Únete a Teclia y comienza a aprender</p>
 
-          {error && <div className="error-message">{error}</div>}
+          {error && <div key={error} className="error-message animate-shake">{error}</div>}
 
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="form-group">
@@ -123,16 +126,15 @@ export const SignupPage = () => {
             </div>
 
             <button type="submit" disabled={loading} className="button button-primary button-block">
-              {loading ? 'Creando cuenta...' : 'Registrarse'}
+              {loading ? <span className="btn-loading"><span className="spinner" /> Creando cuenta…</span> : 'Registrarse'}
             </button>
           </form>
 
           <p className="auth-footer">
             ¿Ya tienes cuenta? <Link to="/auth/login">Inicia sesión aquí</Link>
           </p>
-        </div>
       </div>
-    </div>
+    </AuthLayout>
   );
 };
 

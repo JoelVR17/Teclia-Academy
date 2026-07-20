@@ -107,15 +107,18 @@ function StripeCardFormContent({ submitLabel, successMessage, onSuccess }) {
 
       {status && (
         <div
-          className={status.type === 'success' ? 'success-message payment-status success' : 'error-message payment-status error'}
+          key={status.message}
+          className={status.type === 'success' ? 'success-message payment-status success' : 'error-message payment-status error animate-shake'}
           role={status.type === 'error' ? 'alert' : 'status'}
         >
           {status.message}
         </div>
       )}
 
-      <button type="submit" className="button button-primary" disabled={!stripe || isProcessing}>
-        {isProcessing ? 'Procesando…' : submitLabel}
+      <button type="submit" className="button button-primary button-block" disabled={!stripe || isProcessing}>
+        {isProcessing ? (
+          <span className="btn-loading"><span className="spinner" /> Procesando…</span>
+        ) : submitLabel}
       </button>
       <p className="payment-note">Los datos de la tarjeta se envían de forma segura directamente a Stripe.</p>
     </form>

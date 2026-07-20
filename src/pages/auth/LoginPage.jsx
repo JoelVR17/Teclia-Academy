@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
 import { getSafeRedirect } from '../../utils/safeRedirect.js';
+import { AuthLayout } from '../../components/auth/AuthLayout.jsx';
 
 export const LoginPage = () => {
   const location = useLocation();
@@ -46,11 +47,13 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-container">
-        <div className="auth-card">
+    <AuthLayout
+      title="Bienvenido de vuelta a Teclia."
+      subtitle="Continúa donde lo dejaste y sigue avanzando en tu aprendizaje."
+    >
+      <div className="auth-card">
           <h1>Inicia sesión</h1>
-          <p className="auth-subtitle">Bienvenido de vuelta a Teclia</p>
+          <p className="auth-subtitle">Accede a tu cuenta de estudiante</p>
 
           {reason === 'expired' && (
             <div className="error-message">
@@ -58,7 +61,7 @@ export const LoginPage = () => {
             </div>
           )}
 
-          {error && <div className="error-message">{error}</div>}
+          {error && <div key={error} className="error-message animate-shake">{error}</div>}
 
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="form-group">
@@ -101,16 +104,15 @@ export const LoginPage = () => {
             </div>
 
             <button type="submit" disabled={loading} className="button button-primary button-block">
-              {loading ? 'Cargando...' : 'Iniciar sesión'}
+              {loading ? <span className="btn-loading"><span className="spinner" /> Cargando…</span> : 'Iniciar sesión'}
             </button>
           </form>
 
           <p className="auth-footer">
             ¿No tienes cuenta? <Link to="/auth/signup">Regístrate como estudiante</Link>
           </p>
-        </div>
       </div>
-    </div>
+    </AuthLayout>
   );
 };
 

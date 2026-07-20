@@ -2,14 +2,25 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
 import StripeCardForm from './StripeCardForm.jsx';
+import { Confetti } from '../common/Confetti.jsx';
 
 const PLANS = [
-  { label: 'Básico',  price: '$9.99',  value: 'basico'  },
-  { label: 'Pro',     price: '$24.99', value: 'pro'     },
-  { label: 'Master',  price: '$49.99', value: 'master'  },
+  { label: 'Básico',  price: '$9.99',  value: 'basico', features: ['Acceso a recursos', 'Lecciones guiadas', 'Comunidad privada'] },
+  { label: 'Pro',     price: '$24.99', value: 'pro',    features: ['Feedback de IA', 'Clases 1:1', 'Partituras exclusivas'] },
+  { label: 'Master',  price: '$49.99', value: 'master', features: ['Plan personalizado', 'Sesiones premium', 'Análisis avanzado'] },
 ];
 
 const STORAGE_KEY = 'checkout_plan';
+
+const SecureBadge = () => (
+  <p className="checkout-secure">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 2l7 3v6c0 4.5-3 8.5-7 9-4-.5-7-4.5-7-9V5l7-3z" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+    Pago seguro · Stripe
+  </p>
+);
 
 export const CheckoutFlow = ({ initialPlan, onComplete, renderPaymentForm }) => {
   const { user } = useAuth();
@@ -24,8 +35,8 @@ export const CheckoutFlow = ({ initialPlan, onComplete, renderPaymentForm }) => 
   const [selectedPlan, setSelectedPlan] = useState(() => {
     return initialPlan || sessionStorage.getItem(STORAGE_KEY) || null;
   });
+  const [succeeded, setSucceeded] = useState(false);
 
-  // Persist plan selection
   useEffect(() => {
     if (selectedPlan) {
       sessionStorage.setItem(STORAGE_KEY, selectedPlan);
@@ -36,11 +47,27 @@ export const CheckoutFlow = ({ initialPlan, onComplete, renderPaymentForm }) => 
 
   const planData = PLANS.find((p) => p.label === selectedPlan || p.value === selectedPlan);
 
+  if (succeeded && planData) {
+    return (
+      <div className="checkout-step">
+        <Confetti />
+        <div className="checkout-success">
+          <div className="checkout-success-check" aria-hidden="true">✓</div>
+          <h3>¡Bienvenido a {planData.label}!</h3>
+          <p>Tu método de pago se registró correctamente. Ya puedes disfrutar de tu plan.</p>
+        </div>
+      </div>
+    );
+  }
+
   // Step 1: select_plan
   if (step === 'select_plan') {
     return (
       <div className="checkout-step">
-        <h3>Selecciona tu plan</h3>
+        <div className="checkout-head">
+          <h3>Selecciona tu plan</h3>
+          <p>Elige el plan que mejor se adapta a tu ritmo de aprendizaje.</p>
+        </div>
         <div className="checkout-plans">
           {PLANS.map((plan) => (
             <button
@@ -55,11 +82,10 @@ export const CheckoutFlow = ({ initialPlan, onComplete, renderPaymentForm }) => 
           ))}
         </div>
         <button
-          className="button button-primary"
+          className="button button-primary button-block"
           disabled={!selectedPlan}
           onClick={() => {
             if (!user) {
-              // auth_required — redirect to login
               const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
               navigate(`/auth/login?returnTo=${returnTo}`);
               return;
@@ -69,6 +95,7 @@ export const CheckoutFlow = ({ initialPlan, onComplete, renderPaymentForm }) => 
         >
           {user ? 'Continuar' : 'Inicia sesión para continuar'}
         </button>
+        <SecureBadge />
       </div>
     );
   }
@@ -77,22 +104,27 @@ export const CheckoutFlow = ({ initialPlan, onComplete, renderPaymentForm }) => 
   if (step === 'review' && planData) {
     return (
       <div className="checkout-step">
-        <h3>Revisa tu compra</h3>
+        <div className="checkout-head">
+          <h3>Revisa tu compra</h3>
+          <p>Confirma los detalles antes de continuar al pago.</p>
+        </div>
+        <div className="checkout-plan-summary">
+          <div>
+            <div className="plan-name">Plan {planData.label}</div>
+            <div className="text-muted" style={{ fontSize: '0.85rem' }}>Facturación mensual · USD</div>
+          </div>
+          <div className="plan-cost">{planData.price}</div>
+        </div>
+        {planData.features && (
+          <ul className="lp-plan" style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none', margin: '0 0 1rem' }}>
+            {planData.features.map((f) => (
+              <li key={f}><span className="lp-check" aria-hidden="true">✓</span>{f}</li>
+            ))}
+          </ul>
+        )}
         <div className="checkout-summary">
           <div className="checkout-summary-row">
-            <span>Plan</span>
-            <strong>{planData.label}</strong>
-          </div>
-          <div className="checkout-summary-row">
-            <span>Precio</span>
-            <strong>{planData.price}</strong>
-          </div>
-          <div className="checkout-summary-row">
-            <span>Moneda</span>
-            <span>USD</span>
-          </div>
-          <div className="checkout-summary-row">
-            <span>Usuario</span>
+            <span>Cuenta</span>
             <span>{user?.email}</span>
           </div>
         </div>
@@ -104,6 +136,7 @@ export const CheckoutFlow = ({ initialPlan, onComplete, renderPaymentForm }) => 
             Ir a pagar
           </button>
         </div>
+        <SecureBadge />
       </div>
     );
   }
@@ -112,7 +145,8 @@ export const CheckoutFlow = ({ initialPlan, onComplete, renderPaymentForm }) => 
   if (step === 'payment_method' && planData) {
     const handlePaymentSuccess = () => {
       sessionStorage.removeItem(STORAGE_KEY);
-      setTimeout(() => onComplete?.(), 1200);
+      setSucceeded(true);
+      setTimeout(() => onComplete?.(), 2400);
     };
 
     const paymentForm = renderPaymentForm
@@ -127,12 +161,19 @@ export const CheckoutFlow = ({ initialPlan, onComplete, renderPaymentForm }) => 
 
     return (
       <div className="checkout-step">
-        <h3>Método de pago</h3>
-        <p className="checkout-hint">Plan: <strong>{planData.label}</strong> — {planData.price}</p>
-        <button type="button" className="button button-secondary" onClick={() => setStep('review')}>
+        <div className="checkout-head">
+          <h3>Método de pago</h3>
+          <p>Tus datos se envían cifrados directamente a Stripe.</p>
+        </div>
+        <div className="checkout-plan-summary">
+          <div className="plan-name">Plan {planData.label}</div>
+          <div className="plan-cost">{planData.price}</div>
+        </div>
+        {paymentForm}
+        <button type="button" className="button button-ghost button-block" onClick={() => setStep('review')}>
           Atrás
         </button>
-        {paymentForm}
+        <SecureBadge />
       </div>
     );
   }

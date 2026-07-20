@@ -28,11 +28,17 @@ export const ToastProvider = ({ children }) => {
       <div className="toast-container" role="status" aria-live="polite">
         {toasts.map((t) => (
           <div key={t.id} className={`toast toast-${t.type}`}>
+            <span className="toast-icon" aria-hidden="true">
+              {t.type === 'success' ? '✓' : t.type === 'error' ? '⚠' : 'ℹ'}
+            </span>
             <span className="toast-message">{t.message}</span>
             {t.type === 'error' && (
               <button className="toast-dismiss" onClick={() => removeToast(t.id)} aria-label="Cerrar">
                 ✕
               </button>
+            )}
+            {t.type === 'success' && t.duration > 0 && (
+              <span className="toast-progress" style={{ animationDuration: `${t.duration}ms` }} />
             )}
           </div>
         ))}
